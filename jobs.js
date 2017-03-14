@@ -1,7 +1,7 @@
 //Adds the following functunality to within a job
 // Ctr + [ decreases playback speed by 0.1
 // Ctr + ] increases playback speed by 0.1
-// Double tapping Ctr + Space will toggle between a speed of 1.0 and your previous non-1.0 speed
+// Double tapping Shift + Space will toggle between a speed of 1.0 and your previous non-1.0 speed
 // Also increases the maximum speed from 2.0 to 4.0, at which point the audio cuts out
 
 updateDisplay = function(display)
