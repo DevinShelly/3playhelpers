@@ -4,6 +4,49 @@
 // Double tapping Shift + Space will toggle between a speed of 1.0 and your previous non-1.0 speed
 // Also increases the maximum speed from 2.0 to 4.0, at which point the audio cuts out
 
+//Database functions
+db = null;
+
+createDatabase = function()
+{
+    db.transaction(function(tx) {
+        tx.executeSql('CREATE TABLE IF NOT EXISTS Time (id PRIMARY KEY AUTOINCREMENT, start, end)', [], updateDatabase);
+    }
+}
+                   
+insertOrUpdateTime = function(tx, results)
+{
+    len = results.rows.length;
+    if (len == 0)
+    {
+        tx.transaction(function(tx) {
+            tx.executeSql('INSERT INTO Time (start, end) VALUES (?, ?)', [Date.getTime(), Date.getTime()]);
+        }
+    }
+    else
+    {
+        id = results.rows.item[0]['id'];
+        tx.transaction(function(tx) {
+            tx.executeSql('UPDATE Time (end) VALUES (?) WHERE id = (?)', [Date.getTime(), id]);
+        }   
+    }
+}
+    
+updateDatabase = function()
+{
+    if (!db)
+    {
+        db = openDatabase('3playDB', '1.0', 'Tracks time spent editing', 1024*1024, createDatabase);
+        return;
+    }
+    
+    threshhold = 60;
+    db.transaction(function(tx) {
+        tx.executeSql("SELECT id FROM Time WHERE (?) - end < (?)", [Date.getTime(), threshhold * 1000], insertOrUpdateTime);
+    }
+}        
+
+//Speed functions
 updateDisplay = function(display)
 {
     while ($("#speed-display").length === 0)
@@ -42,6 +85,12 @@ toggleSpeed = function()
 previousSpace = Date.now();
 document.onkeydown = function(e)
 {
+    threshhold = 1.0;
+    if (Math.random() < threshhold)
+    {
+        updateDatabase();
+    }
+    
     leftBracket = 219;
     rightBracket = 221;
     space = 32;
