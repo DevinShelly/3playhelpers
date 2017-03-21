@@ -11,7 +11,7 @@ createDatabase = function()
 {
     db.transaction(function(tx) {
         tx.executeSql('CREATE TABLE IF NOT EXISTS Time (id PRIMARY KEY AUTOINCREMENT, start, end)', [], updateDatabase);
-    }
+    });
 }
                    
 insertOrUpdateTime = function(tx, results)
@@ -21,14 +21,14 @@ insertOrUpdateTime = function(tx, results)
     {
         tx.transaction(function(tx) {
             tx.executeSql('INSERT INTO Time (start, end) VALUES (?, ?)', [Date.getTime(), Date.getTime()]);
-        }
+        });
     }
     else
     {
         id = results.rows.item[0]['id'];
         tx.transaction(function(tx) {
             tx.executeSql('UPDATE Time (end) VALUES (?) WHERE id = (?)', [Date.getTime(), id]);
-        }   
+        });
     }
 }
     
@@ -43,7 +43,7 @@ updateDatabase = function()
     threshhold = 60;
     db.transaction(function(tx) {
         tx.executeSql("SELECT id FROM Time WHERE (?) - end < (?)", [Date.getTime(), threshhold * 1000], insertOrUpdateTime);
-    }
+    });
 }        
 
 //Speed functions
