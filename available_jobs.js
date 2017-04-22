@@ -3,12 +3,24 @@
 interval_id = null;
 interval_duration = 2000;
 
+create_button = function()
+{
+    if ($("#auto_refresh").length === 0)
+    {
+        $(".info-row.top_row.clearfix").append("<div class = \"pull-right\"><a id = 'auto_refresh' class = 'btn btn-icon'>Stop Autorefreshing</button></div>")
+        $("#auto_refresh").click(toggle_autorefresh);
+        if (!interval_id)
+        {
+            $("#auto_refresh").text("Start Autorefreshing");
+        }
+    }
+}
+
 toggle_autorefresh = function()
 {
-    
     if (!interval_id)
     {
-        interval_id = setInterval(function(){$(".btn.btn-icon").click()}, interval_duration);
+        interval_id = setInterval(function(){$(".btn.btn-icon").not("#auto_refresh").click(); }, interval_duration);
         $("#auto_refresh").text("Stop Autorefreshing");
     }
     else
@@ -21,7 +33,7 @@ toggle_autorefresh = function()
 
 if (window.location.href === "http://jobs.3playmedia.com/available_jobs")
 {
-    $("#wrapper").prepend('<div class="pull-right" style="padding-right: 10px; padding-top: 20px"><button id="auto_refresh">Stop Autorefreshing</button></div>')
-    $("#auto_refresh").click(toggle_autorefresh);
+    create_button();
+    setInterval(create_button, 10);
     toggle_autorefresh();
 }
