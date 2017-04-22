@@ -17,7 +17,7 @@ createDatabase = function()
 insertOrUpdateTime = function(tx, results)
 {
     len = results.rows.length;
-    if (len == 0)
+    if (len === 0)
     {
         tx.transaction(function(tx) {
             tx.executeSql('INSERT INTO Time (start, end) VALUES (?, ?)', [Date.getTime(), Date.getTime()]);
@@ -88,7 +88,7 @@ document.onkeydown = function(e)
     threshhold = 1.0;
     if (Math.random() < threshhold)
     {
-        updateDatabase();
+        //updateDatabase();
     }
     
     leftBracket = 219;
