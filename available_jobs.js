@@ -7,7 +7,8 @@ create_button = function()
 {
     if ($("#auto_refresh").length === 0)
     {
-        $(".info-row.top_row.clearfix").append("<div class = \"pull-right\"><a id = 'auto_refresh' class = 'btn btn-icon'>Stop Autorefreshing</button></div>")
+        button_html = "<a id = 'auto_refresh' class = 'btn btn-icon'>Stop Autorefreshing</button>";
+        $("#main_container .btn-icon").parent().append(button_html)
         $("#auto_refresh").click(toggle_autorefresh);
         if (!interval_id)
         {
