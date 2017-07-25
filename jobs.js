@@ -218,32 +218,37 @@ toggleSpeed = function()
     }
 }
 
+updateTimeWorked = function()
+{
+    now = offsetDate();
+    if (Cookies.get('current_date') != now.toDateString())
+    {
+        Cookies.set('current_date', now.toDateString());
+        Cookies.set('working_time', 0);
+    }
+    last_keypress = parseInt(Cookies.get('last_keypress'));
+    if(isNaN(last_keypress))
+    {
+        last_keypress = now.getTime();
+    }
+    working_time = parseInt(Cookies.get('working_time'));
+    Cookies.set('last_keypress', now.getTime());
+    elapsed_time = Math.max(0, now.getTime() - last_keypress);
+    if (elapsed_time < 5000)
+    {
+        working_time = working_time + elapsed_time;
+        Cookies.set('working_time', working_time);
+    }
+    changeSpeed(0.0);
+}
+
 previousSpace = Date.now();
 document.onkeydown = function(e)
 {
     threshhold = 1.0;
     if (Math.random() < threshhold)
     {
-        now = offsetDate();
-        if (Cookies.get('current_date') != now.toDateString())
-        {
-            Cookies.set('current_date', now.toDateString());
-            Cookies.set('working_time', 0);
-        }
-        last_keypress = parseInt(Cookies.get('last_keypress'));
-        if(isNaN(last_keypress))
-        {
-            last_keypress = now.getTime();
-        }
-        working_time = parseInt(Cookies.get('working_time'));
-        Cookies.set('last_keypress', now.getTime());
-        elapsed_time = Math.max(0, now.getTime() - last_keypress);
-        if (elapsed_time < 5000)
-        {
-            working_time = working_time + elapsed_time;
-            Cookies.set('working_time', working_time);
-        }
-        changeSpeed(0.0);
+        updateTimeWorked();
     }
     
     leftBracket = 219;
@@ -276,3 +281,5 @@ document.onkeydown = function(e)
             break;
     }
 }
+
+document.onclick = updateTimeWorked;
