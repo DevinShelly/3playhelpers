@@ -21,7 +21,7 @@ toggle_autorefresh = function()
 {
     if (!interval_id)
     {
-        interval_id = setInterval(function(){$(".btn.btn-icon").not("#auto_refresh").click(); }, interval_duration);
+        interval_id = setInterval(function(){$(".btn.btn-icon").not(".auto-refresh").click(); }, interval_duration);
         $(".auto-refresh").text("Stop Autorefreshing");
     }
     else
