@@ -98,6 +98,7 @@ document.onkeydown = function(e)
     rightBracket = 221;
     space = 32;
     f5 = 116;
+    k = 75;
     
     if (!e.ctrlKey && e.which != f5 && !(e.which == space && e.shiftKey))
     {
@@ -120,6 +121,7 @@ document.onkeydown = function(e)
             previousSpace = Date.now(0);
             break;
         case f5:
+	case k:
             e.preventDefault();
             break;
     }
