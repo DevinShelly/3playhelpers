@@ -21,7 +21,7 @@ offsetDate = function()
 }
 
 //Speed functions
-updateDisplay = function(display)
+updateDisplay = function(speed)
 {
     working_time = parseInt(Cookies.get('working_time'));
     hours = Math.floor(working_time/1000/3600);
@@ -31,10 +31,10 @@ updateDisplay = function(display)
     {
         $($(".btn-group:last")).after("<div class = 'btn-group' id = 'speed-display'></div>")
     }
-    $("#speed-display").text("Speed: " + display + " | Time clocked: " + hours + "h, " + minutes + "m");//, " + seconds + "s");
+    $("#speed-display").text("Speed: " + speed + " | Time clocked: " + hours + "h, " + minutes + "m");//, " + seconds + "s");
 }
 
-changeSpeed = function(changeBy)
+changeSpeed = function(changeBy, updateCookie)
 {
 //     <input type="range" ng-model="ctrl.userSetting.video_playback_rate" min="0.5" max="2" step="0.1" class="ng-valid ng-not-empty ng-dirty ng-valid-parse ng-touched">
     speed = $("*[ng-model='ctrl.userSetting.video_playback_rate']");
@@ -42,14 +42,16 @@ changeSpeed = function(changeBy)
     speed.val(parseFloat(speed.val()) + changeBy);
     angular.element(speed).triggerHandler("input");
     updateDisplay(speed.val());
+    if (updateCookie)
+    {
+      Cookies.set("default_speed", speed.val());
+    }
 }
-
-previousSpeed = 1.0;
+previousSpeed = parseFloat(Cookies.get("default_speed") || 2.0);
 toggleSpeed = function()
 {
     speed = $("*[ng-model='ctrl.userSetting.video_playback_rate']");
     currentSpeed = parseFloat(speed.val());
-    console.log(currentSpeed);
     if (currentSpeed != 1.0)
     {
         changeSpeed(1.0 - currentSpeed);
@@ -86,8 +88,17 @@ updateTimeWorked = function()
 }
 
 previousSpace = Date.now();
+
+initialToggle = false;
 document.onkeydown = function(e)
 {
+    if (!initialToggle)
+    {
+      initialToggle = true;
+      toggleSpeed();
+      updateTimeWorked();
+    }
+  
     threshhold = 1.0;
     if (Math.random() < threshhold)
     {
@@ -108,10 +119,10 @@ document.onkeydown = function(e)
     switch (e.which)
     {
         case leftBracket:
-            changeSpeed(-0.1);
+            changeSpeed(-0.1, true);
             break;
         case rightBracket:
-            changeSpeed(0.1);
+            changeSpeed(0.1, true);
             break;
         case space:
             if (Date.now() - previousSpace  < 500)
@@ -126,5 +137,3 @@ document.onkeydown = function(e)
             break;
     }
 }
-
-document.onclick = updateTimeWorked;
