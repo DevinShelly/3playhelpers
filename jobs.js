@@ -68,8 +68,8 @@ updateTimeWorked = function()
     now = offsetDate();
     if (Cookies.get('current_date') != now.toDateString())
     {
-        Cookies.set('current_date', now.toDateString());
-        Cookies.set('working_time', 0);
+        Cookies.set('current_date', now.toDateString(), {expires: 1});
+        Cookies.set('working_time', 0, {expires: 1});
     }
     last_keypress = parseInt(Cookies.get('last_keypress'));
     if(isNaN(last_keypress))
@@ -77,12 +77,12 @@ updateTimeWorked = function()
         last_keypress = now.getTime();
     }
     working_time = parseInt(Cookies.get('working_time'));
-    Cookies.set('last_keypress', now.getTime());
+    Cookies.set('last_keypress', now.getTime(), {expires: 1});
     elapsed_time = Math.max(0, now.getTime() - last_keypress);
     if (elapsed_time < 5000)
     {
         working_time = working_time + elapsed_time;
-        Cookies.set('working_time', working_time);
+        Cookies.set('working_time', working_time, {expires: 1});
     }
     changeSpeed(0.0);
 }
@@ -110,8 +110,9 @@ document.onkeydown = function(e)
     space = 32;
     f5 = 116;
     k = 75;
+    d = 68;
     
-    if (!e.ctrlKey && e.which != f5 && !(e.which == space && e.shiftKey))
+    if (!e.ctrlKey && e.which != f5 && !(e.which == space && e.shiftKey) && !e.altKey)
     {
         return;
     }
@@ -132,7 +133,7 @@ document.onkeydown = function(e)
             previousSpace = Date.now(0);
             break;
         case f5:
-	case k:
+        case k:
             e.preventDefault();
             break;
     }
