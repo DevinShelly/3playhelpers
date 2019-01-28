@@ -75,8 +75,6 @@ loop_rows = function ()
 
 create_button = function()
 {
-    console.log(claim_automatically);
-    initial_autoclaim = claim_automatically;
     if ($(".auto-refresh").length === 0)
     {
         autorefresh_button = "<a class = 'btn btn-icon auto-refresh'>Stop Autorefreshing</a>";
@@ -94,31 +92,26 @@ create_button = function()
           $(".auto-claim").text("Start Autoclaiming");
         }
     }
-    
-    toggle_autoclaim();
-    console.log(claim_automatically);
-    console.log("--------------------");
 }
 
 toggle_autorefresh = function()
 {
-    if (!interval_id)
-    {
-        interval_id = setInterval(function(){$(".btn.btn-icon").not(".auto-refresh").click(); }, interval_duration);
-        $(".auto-refresh").text("Stop Autorefreshing");
-    }
-    else
-    {
-        clearInterval(interval_id);
-        interval_id = null;
-        $(".auto-refresh").text("Start Autorefreshing");
-    }
+ if (!interval_id)
+ {
+      interval_id = setInterval(function(){$(".btn.btn-icon").not(".auto-refresh").not(".auto-claim").click(); }, interval_duration);
+      $(".auto-refresh").text("Stop Autorefreshing");
+ }
+ else
+ {
+    clearInterval(interval_id);
+    interval_id = null;
+    $(".auto-refresh").text("Start Autorefreshing");
+ }
 }
 
 toggle_autoclaim = function()
 {
-  console.log(claim_automatically);
-  //claim_automatically = !claim_automatically;
+  claim_automatically = !claim_automatically;
   if (claim_automatically)
   {
     $('.auto-claim').text("Stop Autoclaiming");
