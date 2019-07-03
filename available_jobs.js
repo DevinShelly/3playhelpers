@@ -4,7 +4,9 @@
 //Adds the ability to automatically refresh the marketplace every 2 seconds
 
 interval_id = null;
+stop_autoclaim_id = null;
 interval_duration = 5000;
+autoclaim_duration = 1000*60*20;
 
 claim_id = null;
 
@@ -52,7 +54,7 @@ class AutoClaimFilter {
   should_claim_row(row)
   {
     var tds = $(row).find('td');
-    var project = $(row).text().split("|")[0];
+    var project = tds.eq(0).text();
     var rate = parseFloat(tds.eq(4).text().substring(1));
     var bonus = parseFloat(tds.eq(5).text().trim().substring(1));
     bonus = bonus ? bonus : 0.0;
@@ -64,10 +66,26 @@ class AutoClaimFilter {
     var deadline_passes = deadline >= ((new Date()).getTime() + parseInt(this.params[min_deadline_in_mins]) * 60 * 1000);
     var bonus_ratio_passes = bonus / rate >= parseFloat(this.params[min_bonus_ratio]);
     var projects_pass = true;
-    for (var i in this.params[projects])
+    
+    var not_in_project = this.params[projects].filter(function(string){return string[0] == "-"});
+    console.log(not_in_project);
+    var in_project = this.params[projects].filter(function(string){return string[0] != "-"});
+    for(var i in not_in_project)
+    {
+      var not_project = not_in_project[i].substring(1);
+      console.log(not_project);
+      console.log(project.indexOf(not_project));
+      console.log(project);
+      if (project.indexOf(not_project) != -1)
+      {
+        return false;
+      }
+    }
+    
+    for (i in in_project)
     {
       projects_pass = false;
-      if (project.indexOf(this.params[projects][i]) != -1)
+      if (project.indexOf(in_project[i]) != -1)
       {
         projects_pass = true;
         break;
@@ -119,6 +137,7 @@ parse_row = function()
       update_filters(params);
       $(this).find(".btn").click();
       console.log("Claiming:", job_string);
+      this.remove();
       return;
     }
   }
@@ -288,16 +307,27 @@ style_autoclaim = function()
   }
 }
 
+start_autoclaim = function()
+{
+  claim_id = setInterval(loop_rows, 100);
+  reset_autoclaim_timeout();
+}
+
+stop_autoclaim = function()
+{
+  clearInterval(claim_id);
+  claim_id = null;
+}
+
 toggle_autoclaim = function()
 {
   if (claim_id)
   {
-    clearInterval(claim_id);
-    claim_id = null;
+    stop_autoclaim();
   }
   else
   {
-    claim_id = setInterval(loop_rows, 100);
+    start_autoclaim();
   }
   style_autoclaim();
 }
@@ -323,6 +353,10 @@ offsetDate = function()
 
 updatePay = function()
 {
+    if($(".daily_pay").length != 0)
+    {
+      return;
+    }
     total = parseFloat($($("#current_pay h2")[0]).text().substr(1).replace(",", ""));
     if (total === null || isNaN(total))
     {
@@ -342,12 +376,26 @@ updatePay = function()
         today = 0;
     }
     
-    $("#current_pay").append('<h2 class = "muted" style = "margin_top: 10px"> $' + today.toFixed(2) + "</h2>");
+    $("#current_pay").append('<h2 class = "muted daily_pay" style = "margin_top: 10px"> $' + today.toFixed(2) + "</h2>");
     $("#current_pay").append('<div class = "secondColor">TODAY</div>');
     $("#footer_nav ul.box_style li").css("height", 210);
 }
 
-updatePay();
+reset_autoclaim_timeout = function()
+{
+  clearTimeout(stop_autoclaim_id); 
+  stop_autoclaim_id = setTimeout(function()
+  {
+    stop_autoclaim(); 
+    style_autoclaim();
+    
+  }
+  , autoclaim_duration);
+}
+
+$(document).mousemove(reset_autoclaim_timeout);
+
+setInterval(updatePay, 100);
 
 $("<style>")
     .prop("type", "text/css")
@@ -371,3 +419,4 @@ $("<style>")
     `
     )
     .appendTo("head");
+
