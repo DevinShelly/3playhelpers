@@ -139,3 +139,5 @@ document.onkeydown = function(e)
             break;
     }
 }
+
+setInterval(function (){$(".col-md-6").eq(1).prepend($(".panel-open").eq(1))}, 100);
