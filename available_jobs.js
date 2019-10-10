@@ -5,8 +5,9 @@
 
 interval_id = null;
 stop_autoclaim_id = null;
+autoclaim_timeout_countdown_id = null;
 interval_duration = 5000;
-autoclaim_duration = 1000*60*20;
+autoclaim_timeout = 40;
 
 claim_id = null;
 
@@ -15,6 +16,7 @@ job_strings = [];
 //Autoclaiming
 parse_deadline = function (deadline)
 {
+  //console.log("1");
   pm = deadline.trim().slice(-2) == "pm";
   deadline = deadline.trim().substring(0, deadline.trim().length-2);
   hours = deadline.split(":")[0].slice(-2);
@@ -30,6 +32,7 @@ parse_deadline = function (deadline)
 
 parse_duration = function(duration)
 {
+  //console.log("2");
   return parseInt(duration[0])*60 + parseInt(duration[1]);
 }
 
@@ -53,6 +56,7 @@ class AutoClaimFilter {
   
   should_claim_row(row)
   {
+    //console.log("3");
     var tds = $(row).find('td');
     var project = tds.eq(0).text();
     var rate = parseFloat(tds.eq(4).text().substring(1));
@@ -68,14 +72,10 @@ class AutoClaimFilter {
     var projects_pass = true;
     
     var not_in_project = this.params[projects].filter(function(string){return string[0] == "-"});
-    console.log(not_in_project);
     var in_project = this.params[projects].filter(function(string){return string[0] != "-"});
     for(var i in not_in_project)
     {
       var not_project = not_in_project[i].substring(1);
-      console.log(not_project);
-      console.log(project.indexOf(not_project));
-      console.log(project);
       if (project.indexOf(not_project) != -1)
       {
         return false;
@@ -117,6 +117,7 @@ filters = [];
 
 parse_row = function()
 {
+  //console.log("4");
   job_string = $(this).text().replace(/\n|\r/g, "|").split("|").filter(Boolean).join("|");
   if(job_strings.includes(job_string))
   {
@@ -145,16 +146,19 @@ parse_row = function()
 
 loop_rows = function ()
 {
+  //console.log("5");
   $("tr.clickable_row").each(parse_row);
 }
 
 create_autoclaim = function()
 {
+  //console.log("6");
   if($("#autoclaim_filters").length === 0)
   {
     $("#main_container").prepend(`<div class="box-content" id="autoclaim_filters" style="min-height: 0px;"></div>`);
     $("#autoclaim_filters").append(`<div class="accordion-group accordion-heading clearfix autoclaim_row autoclaim_header">
     <label>Delay (mins): <input type="text" name = "delay" value = "0" style = "width:40px;" onchange = "delay_changed()" id = "autoclaim_delay"></input></label>
+    <label>Timeout (mins): <input type="text" name = "timeout" value = "40" style = "width:40px;" onchange = "timeout_changed()" id = "autoclaim_timeout"></input></label>
     <input type="button" value="+" name="add_autoclaim_filter" style="margin-left:10px" onclick="create_autoclaim_row()" />
     <input type="button" value="Save" name="save_autoclaim" style="margin-left:10px" onclick="save_autoclaim()" />
     <input type="button" value="Reset" name="reset_autoclaim" style="margin-left:10px" onclick="reset_autoclaim()"/>`);
@@ -164,6 +168,7 @@ create_autoclaim = function()
 
 create_autoclaim_row = function()
 {
+  //console.log("7");
   row_html = `<div class="accordion-group accordion-heading clearfix autoclaim_row">
         <label>Projects: 
     <input type="text" name="projects">
@@ -189,6 +194,7 @@ create_autoclaim_row = function()
 
 save_autoclaim = function()
 {
+  //console.log("8");
   var params = [];
   for (var f in filters)
   {
@@ -200,11 +206,13 @@ save_autoclaim = function()
 
 reset_autoclaim = function()
 {
+  //console.log("9");
   update_filters(Cookies.getJSON("autoclaim"));
 }
 
 filters_changed = function()
 {
+  //console.log("10");
   params = [];
   $(".autoclaim_row").not(".autoclaim_header").each(function(index){
     inputs = $(this).find("input");
@@ -217,6 +225,7 @@ filters_changed = function()
 
 update_filters = function(params)
 {
+  //console.log("11");
   filters = [];
   $(".autoclaim_row").not(".autoclaim_header").remove();
   for(var p in params)
@@ -237,6 +246,7 @@ update_filters = function(params)
 
 delete_autoclaim = function(button)
 {
+  //console.log("12");
   $(button).parent().remove();
   filters_changed();
 }
@@ -246,6 +256,7 @@ countdown_interval = null;
 
 delay_changed = function()
 {
+  //console.log("13");
   delay = parseInt($("#autoclaim_delay")[0].value);
   clearTimeout(delay);
   delay_timeout = setTimeout(toggle_autoclaim, delay*1000*60);
@@ -260,41 +271,55 @@ delay_changed = function()
     }, 1000*60);
 }
 
+timeout_changed = function()
+{
+  //console.log("14");
+  autoclaim_timeout = parseInt($("#autoclaim_timeout")[0].value);
+  reset_autoclaim_timeout();
+}
+
 create_button = function()
 {
-    if ($(".auto-refresh").length === 0)
-    {
-        autorefresh_button = "<a class = 'btn btn-icon auto-refresh'>Stop Autorefreshing</a>";
-        autoclaim_button = "<a class = 'btn btn-icon auto-claim'>Stop Autoclaiming</a>"
-        $("#main_container .btn-icon").parent().append(autorefresh_button);
-        $("#main_container .btn-icon").parent().append(autoclaim_button);
-        $(".auto-refresh").click(toggle_autorefresh);
-        $(".auto-claim").click(toggle_autoclaim);
-        if (!interval_id)
-        {
-            $(".auto-refresh").text("Start Autorefreshing");
-        }
-        style_autoclaim();
-    }
+  //console.log("15");
+  if ($(".auto-refresh").length === 0)
+  {
+    //console.log("28");
+      autorefresh_button = "<a class = 'btn btn-icon auto-refresh'>Stop Autorefreshing</a>";
+      autoclaim_button = "<a class = 'btn btn-icon auto-claim'>Stop Autoclaiming</a>"
+      $("#main_container .btn-icon").parent().append(autorefresh_button);
+      $("#main_container .btn-icon").parent().append(autoclaim_button);
+      $(".auto-refresh").click(toggle_autorefresh);
+      $(".auto-claim").click(toggle_autoclaim);
+      if (!interval_id)
+      {
+          $(".auto-refresh").text("Start Autorefreshing");
+      }
+      style_autoclaim();
+  }
 }
 
 toggle_autorefresh = function()
 {
- if (!interval_id)
- {
-      interval_id = setInterval(function(){$(".btn.btn-icon").not(".auto-refresh").not(".auto-claim").click(); }, interval_duration);
+  //console.log("16");
+  if (!interval_id)
+  {
+      interval_id = setInterval(function(){
+        //console.log("26");
+        $(".btn.btn-icon").not(".auto-refresh").not(".auto-claim").click(); 
+      }, interval_duration);
       $(".auto-refresh").text("Stop Autorefreshing");
- }
- else
- {
+  }
+  else
+  {
     clearInterval(interval_id);
     interval_id = null;
     $(".auto-refresh").text("Start Autorefreshing");
- }
+  }
 }
 
 style_autoclaim = function()
 {
+  //console.log("17");
   if (claim_id)
   {
     $('.auto-claim').text("Stop Autoclaiming");
@@ -309,18 +334,22 @@ style_autoclaim = function()
 
 start_autoclaim = function()
 {
+  //console.log("18");
   claim_id = setInterval(loop_rows, 100);
   reset_autoclaim_timeout();
 }
 
 stop_autoclaim = function()
 {
+  //console.log("19");
   clearInterval(claim_id);
+  clearInterval(autoclaim_timeout_countdown_id);
   claim_id = null;
 }
 
 toggle_autoclaim = function()
 {
+  //console.log("20");
   if (claim_id)
   {
     stop_autoclaim();
@@ -335,17 +364,42 @@ toggle_autoclaim = function()
 
 if (window.location.href === "https://jobs.3playmedia.com/available_jobs")
 {
-    setInterval(create_button, 10);
+  //console.log("21");
+    setInterval(create_button, 100);
     toggle_autorefresh();
     
-    setInterval(function(){job_strings = []}, 6000);
+    setInterval(function(){
+      //console.log("27");
+      job_strings = []
+    }, 6000);
     setInterval(create_autoclaim, 100);
+}
+
+if (window.location.href === "https://jobs.3playmedia.com/pay_stubs")
+{
+  earnings = eval($(".main script")[0].text.split("var data = ")[1].split(";")[0])[0];
+  months = $(".tickLabel");
+  end = months[11].textContent.split(" ")[1];
+  ytd_earnings = earnings[11][1];
+  for (var i = 10; i>=0; i--)
+  {
+    end_i = months[i].textContent.split(" ")[1];
+    console.log(end);
+    console.log(end_i);
+    if (end === end_i)
+    {
+      ytd_earnings += earnings[i][1];
+    }
+  }
+  
+  $("h1").after("<br><h5>Year to Date</h5><h1>$" + ytd_earnings.toLocaleString() + "</h1>")
 }
 
 //Calculating today's pay
 
 offsetDate = function()
 {
+  //console.log("22");
     //This starts a new day at 6 AM
     offset = 6 * 1000 * 3600;
     return new Date(Date.now() - offset);
@@ -353,6 +407,7 @@ offsetDate = function()
 
 updatePay = function()
 {
+  //console.log("23");
     if($(".daily_pay").length != 0)
     {
       return;
@@ -379,23 +434,38 @@ updatePay = function()
     $("#current_pay").append('<h2 class = "muted daily_pay" style = "margin_top: 10px"> $' + today.toFixed(2) + "</h2>");
     $("#current_pay").append('<div class = "secondColor">TODAY</div>');
     $("#footer_nav ul.box_style li").css("height", 210);
+    $(".boxes").css("width", 920)
 }
 
 reset_autoclaim_timeout = function()
 {
-  clearTimeout(stop_autoclaim_id); 
+  //console.log("24");
+  clearTimeout(stop_autoclaim_id);
+  clearTimeout(autoclaim_timeout_countdown_id);
+  
   stop_autoclaim_id = setTimeout(function()
   {
     stop_autoclaim(); 
     style_autoclaim();
     
   }
-  , autoclaim_duration);
+  , autoclaim_timeout*1000*60);
+  if(document.activeElement != $("#autoclaim_timeout")[0])
+  {
+    $("#autoclaim_timeout")[0].value = autoclaim_timeout;
+  }
+  autoclaim_timeout_countdown_id = setTimeout(function()
+  {
+    //console.log("25");
+    $("#autoclaim_timeout")[0].value = Math.max(parseInt($("#autoclaim_timeout")[0].value) - 1, 0);
+  }, 1000*60);
 }
 
-$(document).mousemove(reset_autoclaim_timeout);
+
+$(document).click(reset_autoclaim_timeout);
 
 setInterval(updatePay, 100);
+
 
 $("<style>")
     .prop("type", "text/css")
@@ -419,4 +489,3 @@ $("<style>")
     `
     )
     .appendTo("head");
-
