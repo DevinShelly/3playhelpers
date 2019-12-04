@@ -58,7 +58,7 @@ toggleSpeed = function()
         changeSpeed(1.0 - currentSpeed);
         previousSpeed = currentSpeed;
     }
-    else
+    elsejQuery.event.trigger({ type : 'keypress', which : character.charCodeAt(0) });
     {
         changeSpeed(previousSpeed - currentSpeed);
     }
