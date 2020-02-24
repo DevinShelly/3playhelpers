@@ -227,10 +227,13 @@ saveData = function()
     filesData.shift();
   }
   localStorage.setItem("filesData", JSON.stringify(filesData));
+  loadData();
 }
 
 loadData = function()
 {
+  console.log("Loading Data");
+  $("#duplicate_data").remove();
   duration = $(".tp-transcript-controls span.ng-binding:eq(0)").text().split("/ ")[1];
   if(duration == undefined)
   {
@@ -246,6 +249,7 @@ loadData = function()
     select = select + "<option value = '" + fileData.id + "'>" + fileData.name + "</option>";
   }
   select = select + "</select>";
+  console.log(select);
   $($(".btn-group:last")).after(select);
   if(filesData.length == 0)
   {
@@ -256,12 +260,27 @@ loadData = function()
 
 populateData = function()
 {
-  if ($(this).val() === "blank")
+  idToLoad = $("#duplicate_data").val();
+  console.log("populating");
+  console.log(this);
+  if (idToLoad === "blank")
   {
     return;
   }
-  //saveData();
-  fileData = JSON.parse(localStorage.getItem("filesData")).filter(i => i.id == $(this).val())[0];
+  if($("tp-transcript p span:first-child").not(".active-cell").length > 0)
+  {
+    $("tp-transcript p span:first-child").not(".active-cell").click();
+    setTimeout(populateData, 1000, idToLoad);
+    console.log("repopulating")
+    return;
+  }
+  id = $(".tab-pane:eq(6) td.ng-binding:eq(1)").text();
+  if(id != idToLoad)
+  {
+    saveData();
+  }
+  loadData();
+  fileData = JSON.parse(localStorage.getItem("filesData")).filter(i => i.id == idToLoad)[0];
   cellsData = fileData["cellsData"];
   console.log("cellsData");
   timeIndex = 0;
