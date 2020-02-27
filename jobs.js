@@ -261,15 +261,15 @@ parseID = function()
   return $(".tab-pane:eq(6) td.ng-binding:eq(1)").text();
 }
 
-getFileData = function()
+getFileData = function(id)
 {
-  //console.log("Getting fileData");
-  return JSON.parse(localStorage.getItem(parseID()));
+  console.log("Getting fileData");
+  return JSON.parse(localStorage.getItem(id));
 }
 
 getDurationData = function()
 {
-  //console.log("Getting durationData");
+  console.log("Getting durationData");
   //Remove any files that are expired
   data = JSON.parse(localStorage.getItem(parseDuration()));
   for(id in data)
@@ -299,17 +299,17 @@ saveParagraph = function(index, callback)
   //We've reached the end of the paragaphs, stop saving
   if(index<0)
   {
-    //console.log("Saving's done. Callback is:" + callback);
+    console.log("Saving's done. Callback is:" + callback);
     loadFileSelector();
     callback ? callback() : null;
     setTimeout(function(){$(".modal-footer .btn").eq(0).prop("disabled", false)}, 300);
     return;
   }
   
-  //console.log("Saving paragraph:" + index);
+  console.log("Saving paragraph:" + index);
   
   //Adds the paragraph data to the file and then saves the next paragraph
-  fileData = getFileData();
+  fileData = getFileData(parseID());
   $(".tp-transcript-paragraph").eq(index).children(".active-cell").each(function() {
     cell = angular.element($(this)).scope().cell;
     fileData.edited[cell.time] = {
@@ -322,18 +322,19 @@ saveParagraph = function(index, callback)
       "speakerLabel": cell.speakerLabel
   }});
   saveFileData(fileData);
+  console.log(fileData);
   saveParagraph(index-1, callback);
 }
 
 saveFileData = function(fileData)
 {
-  //console.log("Saving fileData: " + JSON.stringify(fileData));
+  console.log("Saving fileData: " + JSON.stringify(fileData));
   localStorage.setItem(parseID(), JSON.stringify(fileData));
 }
 
 saveDurationData = function()
 {
-  //console.log("Saving durationData");
+  console.log("Saving durationData");
   durationData = JSON.parse(localStorage.getItem(parseDuration()));
   durationData = durationData ? durationData : {};
   durationData[parseID()] = {"name":parseName(), "expiration":Date.now() + 48*1000*60*60};
@@ -342,7 +343,7 @@ saveDurationData = function()
 
 saveData = function(e, callback) 
 {
-  //console.log("the call back in saveData is:" + callback);
+  console.log("the call back in saveData is:" + callback);
   //Clear up any pseudo paragraphs if necessary
   if ($(".paragraph-pseudo span").last().click().length > 0)
   {
@@ -356,16 +357,18 @@ saveData = function(e, callback)
     fileData = {};
   }
   fileData.edited = {};
+  console.log(fileData);
   saveFileData(fileData);
+  console.log(fileData);
   saveDurationData();
-  //console.log("ID is: " + parseID());
-  //console.log("FileData is: " + JSON.stringify(getFileData()));
+  console.log("ID is: " + parseID());
+  console.log("FileData is: " + JSON.stringify(getFileData(parseID())));
   saveParagraph($(".tp-transcript-paragraph").length - 1, callback);
 }
 
 loadFileSelector = function() 
 {
-  //console.log("Loading File Selector");
+  console.log("Loading File Selector");
   $("#duplicate_data").remove();
   if (parseDuration() == undefined) {
     setTimeout(loadFileSelector, 100);
@@ -385,12 +388,12 @@ loadFileSelector = function()
   {
     $("#duplicate_data").hide();
   }
-  else if(!getFileData())
+  else if(!getFileData(parseID()))
   {
     saveData(null, function()
     {
-      //console.log("Saving original version");
-      fileData = getFileData();
+      console.log("Saving original version");
+      fileData = getFileData(parseID());
       fileData.original = fileData.edited;
       saveFileData(fileData);
     });
@@ -457,7 +460,7 @@ populateParagraph = function(index, cellsData, previousParagraphTimestamp)
   //Load paragraph if needed
   if($(".tp-transcript-paragraph").eq(index).children("span").not(".active-cell").length > 0)
   {
-    //console.log("Reloading paragraph:" + index);
+    console.log("Reloading paragraph:" + index);
     $(".tp-transcript-paragraph").eq(index).children("span").click();
     setTimeout(populateParagraph, 100, index, cellsData);
     return;
@@ -468,7 +471,7 @@ populateParagraph = function(index, cellsData, previousParagraphTimestamp)
     return;
   }
   
-  //console.log("populating paragraph:" + index);
+  console.log("populating paragraph:" + index);
   cells = $(".tp-transcript-paragraph").eq(index).children(".active-cell").each(function(){
     populateCell(this, cellsData, previousParagraphTimestamp)});
   populateParagraph(index-1, cellsData, parseInt(cells[0].getAttribute("timestamp")));
@@ -489,8 +492,8 @@ populateData = function()
     return;
   }
   
-  //console.log("Starting to populate paragraphs");
-  fileData = getFileData();
+  console.log("Starting to populate paragraphs");
+  fileData = getFileData(idToLoad);
   paragraphCount = $(".tp-transcript-paragraph").length;
   if (parseID() == idToLoad) 
   {
