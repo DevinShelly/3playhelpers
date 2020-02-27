@@ -154,7 +154,8 @@ updateTimeWorked = function() {
 previousSpace = Date.now();
 
 initialToggle = false;
-document.onkeydown = function(e) {
+document.onkeydown = function(e) 
+{
   if (!initialToggle) {
     initialToggle = true;
     toggleSpeed();
@@ -245,33 +246,73 @@ document.onkeydown = function(e) {
   }
 }
 
-saveParagraph = function(index, id, callback)
+parseDuration = function()
+{
+  return $(".tp-transcript-controls span.ng-binding:eq(0)").text().split("/ ")[1];
+}
+
+parseName = function()
+{
+  return $(".tab-pane:eq(6) td.ng-binding:eq(3)").text()
+}
+
+parseID = function()
+{
+  return $(".tab-pane:eq(6) td.ng-binding:eq(1)").text();
+}
+
+getFileData = function()
+{
+  //console.log("Getting fileData");
+  return JSON.parse(localStorage.getItem(parseID()));
+}
+
+getDurationData = function()
+{
+  //console.log("Getting durationData");
+  //Remove any files that are expired
+  data = JSON.parse(localStorage.getItem(parseDuration()));
+  for(id in data)
+  {
+    if(data[id].expiration < Date.now())
+    {
+      localStorage.removeItem(id);
+      delete data[id];
+    }
+  }
+  if (data)
+  {
+    localStorage.setItem(parseDuration(), JSON.stringify(data));
+  }
+  return data;
+}
+
+saveParagraph = function(index, callback)
 {
   ///clicks paragraph and tries again if not loaded
   if($(".tp-transcript-paragraph").eq(index).children("span").not(".active-cell").length > 0)
   {
     $(".tp-transcript-paragraph").eq(index).children("span").click();
-    setTimeout(saveParagraph, 100, index, id);
+    setTimeout(saveParagraph, 100, index, callback);
     return;
   }
-  
   //We've reached the end of the paragaphs, stop saving
   if(index<0)
   {
-    loadData();
+    //console.log("Saving's done. Callback is:" + callback);
+    loadFileSelector();
     callback ? callback() : null;
     setTimeout(function(){$(".modal-footer .btn").eq(0).prop("disabled", false)}, 300);
     return;
   }
   
-  console.log("Saving paragraph:" + index);
+  //console.log("Saving paragraph:" + index);
   
   //Adds the paragraph data to the file and then saves the next paragraph
-  fileData = getFileData(id);
-  cellsData = {};
+  fileData = getFileData();
   $(".tp-transcript-paragraph").eq(index).children(".active-cell").each(function() {
     cell = angular.element($(this)).scope().cell;
-    cellsData[cell.time] = {
+    fileData.edited[cell.time] = {
       "words": cell.words,
       "flagged": cell.flagged || $(this).is(":first-child"),
       "tags": cell.tags,
@@ -280,77 +321,79 @@ saveParagraph = function(index, id, callback)
       "bookmarked": cell.bookmarked,
       "speakerLabel": cell.speakerLabel
   }});
-  for(time in cellsData)
-  {
-    fileData.cellsData[time] = cellsData[time];
-  }
   saveFileData(fileData);
-  //setTimeout(saveParagraph, 50, index-1, id);
-  saveParagraph(index-1, id);
+  saveParagraph(index-1, callback);
 }
 
 saveFileData = function(fileData)
 {
-  filesData = getFilesData()
-  previousCopy = filesData.findIndex(i => i.id == fileData.id);
-  if (previousCopy != -1) 
+  //console.log("Saving fileData: " + JSON.stringify(fileData));
+  localStorage.setItem(parseID(), JSON.stringify(fileData));
+}
+
+saveDurationData = function()
+{
+  //console.log("Saving durationData");
+  durationData = JSON.parse(localStorage.getItem(parseDuration()));
+  durationData = durationData ? durationData : {};
+  durationData[parseID()] = {"name":parseName(), "expiration":Date.now() + 48*1000*60*60};
+  localStorage.setItem(parseDuration(), JSON.stringify(durationData));
+}
+
+saveData = function(e, callback) 
+{
+  //console.log("the call back in saveData is:" + callback);
+  //Clear up any pseudo paragraphs if necessary
+  if ($(".paragraph-pseudo span").last().click().length > 0)
   {
-    filesData.splice(previousCopy, 1);
+    setTimeout(saveData, 1000, e, callback);
+    return;
   }
-  filesData.push(fileData);
-  if (filesData.length > 20) {
-    filesData.shift();
-  }
-  localStorage.setItem("filesData", JSON.stringify(filesData));
-}
-
-getFilesData = function()
-{
-  return JSON.parse(localStorage.getItem("filesData"));
-}
-
-getFileData = function(id)
-{
-  return getFilesData().filter(i => i.id == id)[0];
-}
-
-saveData = function(callback) 
-{
-  console.log("saving data")
-  setTimeout(function(){$(".modal-footer .btn").eq(0).prop("disabled", true)}, 200);
-  id = $(".tab-pane:eq(6) td.ng-binding:eq(1)").text();
-  name = $(".tab-pane:eq(6) td.ng-binding:eq(3)").text();
-  duration = $(".tp-transcript-controls span.ng-binding:eq(0)").text().split("/ ")[1];
   
-  fileData = {
-    "duration": duration,
-    "name": name,
-    "id": id,
-    "cellsData":{}
-  };
+  fileData = getFileData(parseID());
+  if(!fileData)
+  {
+    fileData = {};
+  }
+  fileData.edited = {};
   saveFileData(fileData);
-  saveParagraph($(".tp-transcript-paragraph").length - 1, id, callback);
+  saveDurationData();
+  //console.log("ID is: " + parseID());
+  //console.log("FileData is: " + JSON.stringify(getFileData()));
+  saveParagraph($(".tp-transcript-paragraph").length - 1, callback);
 }
 
-loadData = function() {
+loadFileSelector = function() 
+{
+  //console.log("Loading File Selector");
   $("#duplicate_data").remove();
-  duration = $(".tp-transcript-controls span.ng-binding:eq(0)").text().split("/ ")[1];
-  if (duration == undefined) {
-    setTimeout(loadData, 100);
+  if (parseDuration() == undefined) {
+    setTimeout(loadFileSelector, 100);
     return;
   }
 
-  permanentFilesData = JSON.parse(localStorage.getItem("permanentFilesData")).filter(i => i.duration == duration);
-  filesData = JSON.parse(localStorage.getItem("filesData")).filter(i => i.duration == duration);
+  durationData = getDurationData();
   select = "<select id = 'duplicate_data'><option value='blank'></option>";
-  for (const i in filesData.concat(permanentFilesData)) {
-    fileData = filesData[i];
-    select = select + "<option value = '" + fileData.id + "'>" + fileData.name + "</option>";
+  for (id in durationData) 
+  {
+    name = durationData[id].name;
+    select = select + "<option value = '" + id + "'>" + durationData[id].name + "(" + id + ")</option>";
   }
   select = select + "</select>";
   $($(".btn-group:last")).after(select);
-  if (filesData.length == 0) {
+  if (!durationData) 
+  {
     $("#duplicate_data").hide();
+  }
+  else if(!getFileData())
+  {
+    saveData(null, function()
+    {
+      //console.log("Saving original version");
+      fileData = getFileData();
+      fileData.original = fileData.edited;
+      saveFileData(fileData);
+    });
   }
   $("#duplicate_data").change(populateData);
 }
@@ -374,12 +417,13 @@ populateCell = function(cell, cellsData, previousParagraphTimestamp)
     };
   
   times = Object.keys(cellsData).filter(i => parseInt(i) >= timestamp && parseInt(i) < nextTimestamp).sort((n1, n2) => parseInt(n2) - parseInt(n1));
+  
   multipleCellData = times.count>1;
   scope.cell.words = "";
   for (time of times)
   {
     cellData = cellsData[time];
-    scope.cell.words = (scope.cell.words + " " + cellData["words"]).trim();
+    scope.cell.words = (cellData["words"] + " " + scope.cell.words).trim();
     scope.cell.flagged = cellData["flagged"] || multipleCellData;
     scope.cell.tags = cellData["tags"];
     scope.cell.tagged = cellData["tagged"];
@@ -413,7 +457,7 @@ populateParagraph = function(index, cellsData, previousParagraphTimestamp)
   //Load paragraph if needed
   if($(".tp-transcript-paragraph").eq(index).children("span").not(".active-cell").length > 0)
   {
-    console.log("Reloading paragraph:" + index);
+    //console.log("Reloading paragraph:" + index);
     $(".tp-transcript-paragraph").eq(index).children("span").click();
     setTimeout(populateParagraph, 100, index, cellsData);
     return;
@@ -424,6 +468,7 @@ populateParagraph = function(index, cellsData, previousParagraphTimestamp)
     return;
   }
   
+  //console.log("populating paragraph:" + index);
   cells = $(".tp-transcript-paragraph").eq(index).children(".active-cell").each(function(){
     populateCell(this, cellsData, previousParagraphTimestamp)});
   populateParagraph(index-1, cellsData, parseInt(cells[0].getAttribute("timestamp")));
@@ -444,21 +489,18 @@ populateData = function()
     return;
   }
   
-  id = $(".tab-pane:eq(6) td.ng-binding:eq(1)").text();
-  fileData = getFileData(idToLoad);
+  //console.log("Starting to populate paragraphs");
+  fileData = getFileData();
   paragraphCount = $(".tp-transcript-paragraph").length;
-  
-  //save the data if we're loading a different file
-  if (id != idToLoad) 
+  if (parseID() == idToLoad) 
   {
-    callback = function(){populateParagraph(paragraphCount-1, fileData.cellsData, Infinity)};
-    saveData(callback);
-    return;
+    populateParagraph(paragraphCount-1, fileData.original, Infinity);
+  }
+  else
+  {
+    populateParagraph(paragraphCount-1, fileData.edited, Infinity);
   }
   
-  console.log("Starting to populate paragraphs");
-  //directly load without saving if we're restoring a previous version of this file
-  populateParagraph(paragraphCount-1, fileData.cellsData, Infinity);
 }
 
 setInterval(function() {
@@ -469,4 +511,4 @@ setTimeout(function() {
    $("#finish-dropdown a").mousedown(saveData);
 }, 2000);
 
-loadData();
+loadFileSelector();
