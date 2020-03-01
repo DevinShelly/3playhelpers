@@ -151,12 +151,62 @@ updateTimeWorked = function() {
   changeSpeed(0.0);
 }
 
-previousSpace = Date.now();
+save_and_load_macros = function(e)
+{
+  index = e.which - 97;
+  var macroWords;
+  if (e.which != f12 && e.which != f11) {
+    macroWords = $("[ng-model='macroData.words']");
+    macroSpeakers = $("[ng-click='ctrl.toggleMacroSpeakerLabel(macroData.id)']");
+    index = e.which - 97;
+    if (index < 0) {
+      index = 9;
+    }
+  }
 
+  macroWord = $(".user-selected").text().trim();
+  if (macroWord.split("||").length == 2) {
+    key = macroWord.split("||")[0];
+    value = macroWord.split("||")[1];
+    localStorage.setItem(key, value);
+    macroWord = key;
+  }
+
+  if (localStorage.getItem(macroWord.toLowerCase())) {
+    key = macroWord;
+    macroWord = localStorage.getItem(macroWord.toLowerCase());
+  }
+
+  angular.element($(".user-selected")).scope().cell.setWords(macroWord);
+  angular.element($(".user-selected")).scope().cell.setDirty(true);
+  if(macroWord[macroWord.length-1] == ":")
+  {
+    angular.element($(".user-selected")).scope().cell.setSpeakerLabel(macroWord.substr(0, macroWord.length-1));
+  }
+  angular.element($(".user-selected")).scope().$apply();
+
+  if (e.which == f12 || e.which == f11) {
+    e.preventDefault;
+    return;
+  }
+
+  is_speaker = macroWord[macroWord.length - 1] == ":";
+
+  macroWords[index].value = macroWord;
+  $(macroWords[index]).trigger("input");
+  speaker_checked = macroSpeakers[index].value == "true";
+  if (speaker_checked != is_speaker) {
+    $(macroSpeakers[index]).click();
+  }
+  e.preventDefault();
+}
+
+previousSpace = Date.now();
 initialToggle = false;
 document.onkeydown = function(e) 
 {
-  if (!initialToggle) {
+  if (!initialToggle) 
+  {
     initialToggle = true;
     toggleSpeed();
     updateTimeWorked();
@@ -175,58 +225,35 @@ document.onkeydown = function(e)
   f12 = 123;
   k = 75;
   d = 68;
+  left = 37;
+  right = 39;
 
-  if (!e.ctrlKey && e.which != f5 && e.which != f12 && !(e.which == space && e.shiftKey) && !e.altKey && e.which < 96) {
+  if (!e.ctrlKey && e.which != f5 && e.which!= f11 && e.which != f12 && !(e.which == space && e.shiftKey) && !e.altKey && e.which < 96) 
+  {
     return;
   }
 
-  if ((e.which >= 96 && e.which <= 105) || e.which == f12 || e.which == f11) {
-    index = e.which - 97;
-    var macroWords;
-    if (e.which != f12 && e.which != f11) {
-      macroWords = $("[ng-model='macroData.words']");
-      macroSpeakers = $("[ng-click='ctrl.toggleMacroSpeakerLabel(macroData.id)']");
-      index = e.which - 97;
-      if (index < 0) {
-        index = 9;
-      }
-    }
-
-    macroWord = $(".user-selected").text().trim();
-    if (macroWord.split("||").length == 2) {
-      key = macroWord.split("||")[0];
-      value = macroWord.split("||")[1];
-      localStorage.setItem(key, value);
-      macroWord = key;
-    }
-
-    if (localStorage.getItem(macroWord.toLowerCase())) {
-      key = macroWord;
-      macroWord = localStorage.getItem(macroWord.toLowerCase());
-    }
-
-    angular.element($(".user-selected")).scope().cell.words = macroWord;
-    angular.element($(".user-selected")).scope().cell.dirty = true;
-    angular.element($(".user-selected")).scope().$apply();
-
-    if (e.which == f12 || e.which == f11) {
-      e.preventDefault;
-      return;
-    }
-
-    is_speaker = macroWord[macroWord.length - 1] == ":";
-
-    macroWords[index].value = macroWord;
-    $(macroWords[index]).trigger("input");
-    speaker_checked = macroSpeakers[index].value == "true";
-    if (speaker_checked != is_speaker) {
-      $(macroSpeakers[index]).click();
-    }
-    e.preventDefault();
-
+  if ((e.which >= 96 && e.which <= 105) || e.which == f12 || e.which == f11) 
+  {
+    save_and_load_macros(e);
+  }
+  
+  if(e.which == 37)
+  {
+    selectedTimestamp = parseInt($(".user-selected").attr("timestamp"));
+    $(".cell-flagged").filter(function(){return $(this).attr("timestamp")<selectedTimestamp}).eq(0).click();
+    
+    console.log("Previous flag");
+  }
+  
+  if(e.which == 39)
+  {
+    selectedTimestamp = parseInt($(".user-selected").attr("timestamp"));
+    $(".cell-flagged").filter(function(){return $(this).attr("timestamp")>selectedTimestamp}).eq(0).click();
   }
 
-  switch (e.which) {
+  switch (e.which) 
+  {
     case leftBracket:
       changeSpeed(-0.1, true);
       break;
@@ -234,7 +261,8 @@ document.onkeydown = function(e)
       changeSpeed(0.1, true);
       break;
     case space:
-      if (Date.now() - previousSpace < 500) {
+      if (Date.now() - previousSpace < 500) 
+      {
         toggleSpeed();
       }
       previousSpace = Date.now(0);
@@ -263,13 +291,13 @@ parseID = function()
 
 getFileData = function(id)
 {
-  console.log("Getting fileData");
+  //console.log("Getting fileData");
   return JSON.parse(localStorage.getItem(id));
 }
 
 getDurationData = function()
 {
-  console.log("Getting durationData");
+  //console.log("Getting durationData");
   //Remove any files that are expired
   data = JSON.parse(localStorage.getItem(parseDuration()));
   for(id in data)
@@ -290,6 +318,7 @@ getDurationData = function()
 saveParagraph = function(index, callback)
 {
   ///clicks paragraph and tries again if not loaded
+  //console.log("Saving paragraph");
   if($(".tp-transcript-paragraph").eq(index).children("span").not(".active-cell").length > 0)
   {
     $(".tp-transcript-paragraph").eq(index).children("span").click();
@@ -299,14 +328,15 @@ saveParagraph = function(index, callback)
   //We've reached the end of the paragaphs, stop saving
   if(index<0)
   {
-    console.log("Saving's done. Callback is:" + callback);
+    console.log("Finished saving");
     loadFileSelector();
     callback ? callback() : null;
-    setTimeout(function(){$(".modal-footer .btn").eq(0).prop("disabled", false)}, 300);
+    clearInterval(disable_button);
+    console.log(disable_button);
+    setInterval(function(){$(".modal-footer .btn").prop("disabled", false); console.log("Enabling button")}, 100);
+    $("#duplicate_data").show();
     return;
   }
-  
-  console.log("Saving paragraph:" + index);
   
   //Adds the paragraph data to the file and then saves the next paragraph
   fileData = getFileData(parseID());
@@ -322,28 +352,63 @@ saveParagraph = function(index, callback)
       "speakerLabel": cell.speakerLabel
   }});
   saveFileData(fileData);
-  console.log(fileData);
   saveParagraph(index-1, callback);
 }
 
 saveFileData = function(fileData)
 {
-  console.log("Saving fileData: " + JSON.stringify(fileData));
-  localStorage.setItem(parseID(), JSON.stringify(fileData));
+  try
+  {
+    localStorage.setItem(parseID(), JSON.stringify(fileData));
+  }
+  catch(error)
+  {
+    durations = Object.keys(localStorage).filter(k=> k.split(":").length==3);
+    deleted = false;
+    for (duration of durations)
+    {
+      //console.log(duration);
+      files = JSON.parse(localStorage.getItem(duration));
+      for (file in files)
+      {
+        fileInfo = files[file];
+        if(Date.now() - fileInfo.expiration > 0)
+        {
+          deleted = delete files[file];
+          localStorage.removeItem(file);
+        }
+        else
+        {
+          //console.log(fileInfo);
+        }
+      }
+      localStorage.setItem(duration, JSON.stringify(files));
+    }
+    if(!deleted)
+    {
+      //alert("Couldn't free up space to save file");
+    }
+    else
+    {
+      saveFileData(fileData);
+    }
+  }
 }
 
 saveDurationData = function()
 {
-  console.log("Saving durationData");
+  //console.log("Saving durationData");
   durationData = JSON.parse(localStorage.getItem(parseDuration()));
   durationData = durationData ? durationData : {};
   durationData[parseID()] = {"name":parseName(), "expiration":Date.now() + 48*1000*60*60};
   localStorage.setItem(parseDuration(), JSON.stringify(durationData));
 }
 
+disable_button = null;
 saveData = function(e, callback) 
 {
-  console.log("the call back in saveData is:" + callback);
+  console.log("saving data");
+  //console.log("the call back in saveData is:" + callback);
   //Clear up any pseudo paragraphs if necessary
   if ($(".paragraph-pseudo span").last().click().length > 0)
   {
@@ -357,18 +422,15 @@ saveData = function(e, callback)
     fileData = {};
   }
   fileData.edited = {};
-  console.log(fileData);
   saveFileData(fileData);
-  console.log(fileData);
   saveDurationData();
-  console.log("ID is: " + parseID());
-  console.log("FileData is: " + JSON.stringify(getFileData(parseID())));
+  disable_button = setInterval(function(){$(".modal-footer .btn").eq(0).prop("disabled", true)}, 100);
   saveParagraph($(".tp-transcript-paragraph").length - 1, callback);
 }
 
 loadFileSelector = function() 
 {
-  console.log("Loading File Selector");
+  //console.log("Loading File Selector");
   $("#duplicate_data").remove();
   if (parseDuration() == undefined) {
     setTimeout(loadFileSelector, 100);
@@ -379,8 +441,8 @@ loadFileSelector = function()
   select = "<select id = 'duplicate_data'><option value='blank'></option>";
   for (id in durationData) 
   {
-    name = durationData[id].name;
-    select = select + "<option value = '" + id + "'>" + durationData[id].name + "(" + id + ")</option>";
+    name = id != parseID() ? durationData[id].name : "Original ASR";
+    select = select + "<option value = '" + id + "'>" + name + "</option>";
   }
   select = select + "</select>";
   $($(".btn-group:last")).after(select);
@@ -392,7 +454,7 @@ loadFileSelector = function()
   {
     saveData(null, function()
     {
-      console.log("Saving original version");
+      //console.log("Saving original version");
       fileData = getFileData(parseID());
       fileData.original = fileData.edited;
       saveFileData(fileData);
@@ -422,18 +484,15 @@ populateCell = function(cell, cellsData, previousParagraphTimestamp)
   times = Object.keys(cellsData).filter(i => parseInt(i) >= timestamp && parseInt(i) < nextTimestamp).sort((n1, n2) => parseInt(n2) - parseInt(n1));
   
   multipleCellData = times.count>1;
-  scope.cell.words = "";
+  scope.cell.setWords("");
   for (time of times)
   {
     cellData = cellsData[time];
-    scope.cell.words = (cellData["words"] + " " + scope.cell.words).trim();
-    scope.cell.flagged = cellData["flagged"] || multipleCellData;
-    scope.cell.tags = cellData["tags"];
-    scope.cell.tagged = cellData["tagged"];
-    scope.cell.italicized = cellData["italicized"];
-    scope.cell.bookmarked = cellData["bookmarked"];
-    scope.cell.speakerLabel = cellData["speakerLabel"];
-    scope.cell.empty = (scope.cell.words == "");
+    scope.cell.setWords((cellData["words"] + " " + scope.cell.words).trim());
+    scope.cell.setFlagged(cellData["flagged"] || multipleCellData);
+    scope.cell.setTags(cellData["tags"]);
+    scope.cell.setItalics(cellData["italicized"]);
+    scope.cell.setBookmarked(cellData["bookmarked"]);
   }
   
   currentState = 
@@ -460,7 +519,7 @@ populateParagraph = function(index, cellsData, previousParagraphTimestamp)
   //Load paragraph if needed
   if($(".tp-transcript-paragraph").eq(index).children("span").not(".active-cell").length > 0)
   {
-    console.log("Reloading paragraph:" + index);
+    //console.log("Reloading paragraph:" + index);
     $(".tp-transcript-paragraph").eq(index).children("span").click();
     setTimeout(populateParagraph, 100, index, cellsData);
     return;
@@ -471,7 +530,7 @@ populateParagraph = function(index, cellsData, previousParagraphTimestamp)
     return;
   }
   
-  console.log("populating paragraph:" + index);
+  //console.log("populating paragraph:" + index);
   cells = $(".tp-transcript-paragraph").eq(index).children(".active-cell").each(function(){
     populateCell(this, cellsData, previousParagraphTimestamp)});
   populateParagraph(index-1, cellsData, parseInt(cells[0].getAttribute("timestamp")));
@@ -492,7 +551,7 @@ populateData = function()
     return;
   }
   
-  console.log("Starting to populate paragraphs");
+  //console.log("Starting to populate paragraphs");
   fileData = getFileData(idToLoad);
   paragraphCount = $(".tp-transcript-paragraph").length;
   if (parseID() == idToLoad) 
@@ -506,12 +565,11 @@ populateData = function()
   
 }
 
-setInterval(function() {
-  $(".col-md-6").eq(1).prepend($(".panel-open").eq(1));
-}, 100);
-
-setTimeout(function() {
-   $("#finish-dropdown a").mousedown(saveData);
-}, 2000);
-
 loadFileSelector();
+
+setInterval(function()
+{
+  $(".col-md-6").eq(1).prepend($(".panel-open").eq(1));
+  $("#finish-dropdown a").off("mousedown");
+  $("#finish-dropdown a").mousedown(saveData);
+}, 100);
