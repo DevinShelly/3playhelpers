@@ -78,6 +78,35 @@
   return n(function() {})
 });
 
+//This function fires on startup
+always4 = null;
+previousSpeed = 2.0;
+
+onStartup = function()
+{
+  //Uncomment this to autostart the video and insert a [MUSIC PLAYING] in the first cell for batches of mostly audio only files 
+  try
+  {
+  // angular.element($(".active-cell")).scope().cell.setWords("[MUSIC PLAYING]");
+  // angular.element($(".active-cell")).scope().$apply();
+  // angular.element($(".active-cell").eq(6)).scope().paragraph.transcript.makeNewParagraph(angular.element($(".active-cell").eq(6)).scope().cell);
+  // angular.element($("videogular")).scope().ctrl.tpVideoService.playerApi.play();
+  // always4 = setInterval(function(){setSpeedTo(4.0)}, 100);
+  // $(".fa-check").parent().click();
+  }
+  catch
+  {
+  }
+  return $(".modal-footer button").click().length;
+}
+
+startupInterval = setInterval(function(){
+  if(onStartup())
+  {
+    clearInterval(startupInterval);
+  }
+}, 1000);
+
 //Adds the following functunality to within a job
 // Ctr + [ decreases playback speed by 0.1
 // Ctr + ] increases playback speed by 0.1
@@ -102,6 +131,11 @@ updateDisplay = function(speed) {
   $("#speed-display").text("Speed: " + speed + " | Time clocked: " + hours + "h, " + minutes + "m"); //, " + seconds + "s");
 }
 
+setSpeedTo = function(speed)
+{
+  changeSpeed(speed - $("*[ng-model='ctrl.userSetting.video_playback_rate']").val());;
+}
+
 changeSpeed = function(changeBy, updateCookie) {
   //     <input type="range" ng-model="ctrl.userSetting.video_playback_rate" min="0.5" max="2" step="0.1" class="ng-valid ng-not-empty ng-dirty ng-valid-parse ng-touched">
   speed = $("*[ng-model='ctrl.userSetting.video_playback_rate']");
@@ -111,7 +145,10 @@ changeSpeed = function(changeBy, updateCookie) {
   updateDisplay(speed.val());
 }
 
-previousSpeed = 2.0;
+
+
+
+
 toggleSpeed = function() {
   speed = $("*[ng-model='ctrl.userSetting.video_playback_rate']");
   currentSpeed = parseFloat(speed.val());
@@ -176,9 +213,9 @@ save_and_load_macros = function(e)
     key = macroWord;
     macroWord = localStorage.getItem(macroWord.toLowerCase());
   }
-
+  
   angular.element($(".user-selected")).scope().cell.setWords(macroWord);
-  angular.element($(".user-selected")).scope().cell.setDirty(true);
+  //angular.element($(".user-selected")).scope().cell.setDirty(true);
   if(macroWord[macroWord.length-1] == ":")
   {
     angular.element($(".user-selected")).scope().cell.setSpeakerLabel(macroWord.substr(0, macroWord.length-1));
@@ -242,8 +279,6 @@ document.onkeydown = function(e)
   {
     selectedTimestamp = parseInt($(".user-selected").attr("timestamp"));
     $(".cell-flagged").filter(function(){return $(this).attr("timestamp")<selectedTimestamp}).eq(0).click();
-    
-    console.log("Previous flag");
   }
   
   if(e.which == 39)
@@ -264,6 +299,7 @@ document.onkeydown = function(e)
       if (Date.now() - previousSpace < 500) 
       {
         toggleSpeed();
+        clearInterval(always4);
       }
       previousSpace = Date.now(0);
       break;
@@ -300,18 +336,6 @@ getDurationData = function()
   //console.log("Getting durationData");
   //Remove any files that are expired
   data = JSON.parse(localStorage.getItem(parseDuration()));
-  for(id in data)
-  {
-    if(data[id].expiration < Date.now())
-    {
-      localStorage.removeItem(id);
-      delete data[id];
-    }
-  }
-  if (data)
-  {
-    localStorage.setItem(parseDuration(), JSON.stringify(data));
-  }
   return data;
 }
 
@@ -332,8 +356,7 @@ saveParagraph = function(index, callback)
     loadFileSelector();
     callback ? callback() : null;
     clearInterval(disable_button);
-    console.log(disable_button);
-    setInterval(function(){$(".modal-footer .btn").prop("disabled", false); console.log("Enabling button")}, 100);
+    setInterval(function(){$(".modal-footer .btn").prop("disabled", false);}, 100);
     $("#duplicate_data").show();
     return;
   }
@@ -344,70 +367,81 @@ saveParagraph = function(index, callback)
     cell = angular.element($(this)).scope().cell;
     fileData.edited[cell.time] = {
       "words": cell.words,
-      "flagged": cell.flagged || $(this).is(":first-child"),
+      "flagged": cell.flagged,
       "tags": cell.tags,
       "tagged": cell.tagged,
       "italicized": cell.italicized,
       "bookmarked": cell.bookmarked,
-      "speakerLabel": cell.speakerLabel
+      "speakerLabel": cell.speakerLabel,
+      "isFirstInParagraph": cell.isFirstInParagraph()
   }});
   saveFileData(fileData);
   saveParagraph(index-1, callback);
+}
+
+deleteFiles = function(deleteNonPermanent)
+{
+  durations = Object.keys(localStorage).filter(k=> k.split(":").length==3);
+  deleted = false;
+  for (duration of durations)
+  {
+    files = JSON.parse(localStorage.getItem(duration));
+    for (file in files)
+    {
+      if(Date.now() - files[file].expiration > 0 || (deleteNonPermanent && files[file].expiration < Infinity))
+      {
+        console.log(file);
+        deleted = delete files[file];
+        localStorage.removeItem(file);
+        console.log()
+      }
+      else
+      {
+        //console.log(fileInfo);
+      }
+    }
+    Object.keys(duration).count ? localStorage.setItem(duration, JSON.stringify(files)) : localStorage.removeItem(duration);
+  }
+  return deleted;
 }
 
 saveFileData = function(fileData)
 {
   try
   {
+    console.log("Saving file data");
     localStorage.setItem(parseID(), JSON.stringify(fileData));
   }
   catch(error)
   {
-    durations = Object.keys(localStorage).filter(k=> k.split(":").length==3);
-    deleted = false;
-    for (duration of durations)
+    if(!deleteFiles(false))
     {
-      //console.log(duration);
-      files = JSON.parse(localStorage.getItem(duration));
-      for (file in files)
-      {
-        fileInfo = files[file];
-        if(Date.now() - fileInfo.expiration > 0)
-        {
-          deleted = delete files[file];
-          localStorage.removeItem(file);
-        }
-        else
-        {
-          //console.log(fileInfo);
-        }
-      }
-      localStorage.setItem(duration, JSON.stringify(files));
+      saveFileData(fileData);
     }
-    if(!deleted)
+    else if(!deleteFiles(true))
     {
-      //alert("Couldn't free up space to save file");
+      saveFileData(fileData);
     }
     else
     {
-      saveFileData(fileData);
+      alert("Couldn't free up space to save file");
     }
   }
 }
 
 saveDurationData = function()
 {
-  //console.log("Saving durationData");
+  console.log("Saving durationData");
   durationData = JSON.parse(localStorage.getItem(parseDuration()));
   durationData = durationData ? durationData : {};
-  durationData[parseID()] = {"name":parseName(), "expiration":Date.now() + 48*1000*60*60};
+  durationData[parseID()] = {"name":parseName(), "expiration":Date.now() + 4*1000*60*60};
   localStorage.setItem(parseDuration(), JSON.stringify(durationData));
 }
 
 disable_button = null;
 saveData = function(e, callback) 
 {
-  console.log("saving data");
+  console.log("Saving data");
   //console.log("the call back in saveData is:" + callback);
   //Clear up any pseudo paragraphs if necessary
   if ($(".paragraph-pseudo span").last().click().length > 0)
@@ -430,7 +464,7 @@ saveData = function(e, callback)
 
 loadFileSelector = function() 
 {
-  //console.log("Loading File Selector");
+  console.log("Loading File Selector");
   $("#duplicate_data").remove();
   if (parseDuration() == undefined) {
     setTimeout(loadFileSelector, 100);
@@ -470,48 +504,86 @@ populateCell = function(cell, cellsData, previousParagraphTimestamp)
   timestamp = cell.getAttribute("timestamp");
   scope = angular.element($(cell)).scope();
   
-  originalState = {
-      "words": scope.cell.words,
-      "flagged": !scope.cell.flagged ? false : true,
-      "tags": scope.cell.tags,
-      "tagged": !scope.cell.tagged ? false : true,
-      "italicized": !scope.cell.italicized ? false : true,
-      "bookmarked": !scope.cell.bookmarked ? false : true,
-      "speakerLabel": scope.cell.speakerLabel,
-      "empty": !scope.cell.empty ? false : true
-    };
-  
   times = Object.keys(cellsData).filter(i => parseInt(i) >= timestamp && parseInt(i) < nextTimestamp).sort((n1, n2) => parseInt(n2) - parseInt(n1));
   
-  multipleCellData = times.count>1;
-  scope.cell.setWords("");
+  words = "";
+  
+  
   for (time of times)
   {
     cellData = cellsData[time];
-    scope.cell.setWords((cellData["words"] + " " + scope.cell.words).trim());
-    scope.cell.setFlagged(cellData["flagged"] || multipleCellData);
+    words = (cellData["words"] + " " + words).trim();
+    scope.cell.setFlagged(cellData["flagged"] || times.length>1);
     scope.cell.setTags(cellData["tags"]);
     scope.cell.setItalics(cellData["italicized"]);
     scope.cell.setBookmarked(cellData["bookmarked"]);
   }
-  
-  currentState = 
+  scope.cell.setWords(words);
+  if(scope.cell.dirty)
   {
-    "words": scope.cell.words,
-    "flagged": !scope.cell.flagged ? false : true,
-    "tags": scope.cell.tags,
-    "tagged": !scope.cell.tagged ? false : true,
-    "italicized": !scope.cell.italicized ? false : true,
-    "bookmarked": !scope.cell.bookmarked ? false : true,
-    "speakerLabel": scope.cell.speakerLabel,
-    "empty": !scope.cell.empty ? false : true
-  };
-  
-  if (JSON.stringify(originalState) != JSON.stringify(currentState)) 
-  {
-      scope.cell.dirty = true;
-      scope.$apply();
+    scope.$apply();
   }
+}
+
+createParagraphs = function(cellsData, startingTimestamp)
+{
+  //Create new paragraphs where they should be
+  cellsToBreakOn = Object.keys(cellsData).filter(i=>cellsData[i].isFirstInParagraph && !cellsData[i].isBroken);
+  for(cellToBreakOn of cellsToBreakOn)
+  {
+    cells = $(".tp-transcript-paragraph span").filter(function(){return parseInt($(this).attr("timestamp"))<=parseInt(cellToBreakOn)});
+    cell = cells[cells.length-1];
+    if($(cell).hasClass("active-cell"))
+    {
+      scope = angular.element($(cell)).scope();
+      scope.paragraph.transcript.makeNewParagraph(scope.cell);
+      scope.$apply();
+      cellsData[cellToBreakOn].isBroken = true;
+    }
+    else
+    {
+      $(cell).click();
+      setTimeout(createParagraphs, 100, cellsData);
+      return;
+    }
+  }
+  
+  //Now merge the paragraphs back up that shouldn't be a new paragraph
+  startingTimestamp = startingTimestamp ? startingTimestamp : 0;
+  firstCells = $(".tp-transcript-paragraph span:first-child").filter(function(){return parseInt($(this).attr("timestamp")) >= parseInt(startingTimestamp)}).slice(1);
+  
+  console.log(cellsData);
+  for(cell of firstCells)
+  {
+    if($(cell).hasClass("active-cell"))
+    {
+      //Set the words so that it updates the speaker IDs if needed
+      scope = angular.element($(cell)).scope();
+      scope.cell.setWords(scope.cell.words);
+      console.log(cellsData[$(cell).attr("timestamp")]);
+      console.log($(cell).attr("timestamp"));
+      if(!cellsData[$(cell).attr("timestamp")] || !cellsData[$(cell).attr("timestamp")].isFirstInParagraph)
+      {
+        $(cell).click();
+        scope.paragraph.transcript.removeParagraph(scope.paragraph.transcript.userCellParagraph());
+      }
+      else
+      {
+        console.log("Not removing paragraph");
+        console.log(cell);
+        console.log(cellsData[$(cell).attr("timestamp")]);
+      }
+    }
+    else
+    {
+      cell.click();
+      setTimeout(createParagraphs, 100, cellsData, $(cell).attr("timestamp"));
+      return;
+    }
+  }
+  angular.element($(".active-cell").eq(0)).scope().$apply();
+  
+  
 }
 
 populateParagraph = function(index, cellsData, previousParagraphTimestamp)
@@ -525,8 +597,10 @@ populateParagraph = function(index, cellsData, previousParagraphTimestamp)
     return;
   }
   
+  //Break the paragraphs now that all the words are loaded
   if(index < 0)
   {
+    createParagraphs(cellsData, 0);
     return;
   }
   
