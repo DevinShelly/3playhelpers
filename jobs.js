@@ -84,28 +84,27 @@ previousSpeed = 2.0;
 
 onStartup = function()
 {
-  //Uncomment this to autostart the video and insert a [MUSIC PLAYING] in the first cell for batches of mostly audio only files 
-  try
+  console.log("Starting up");
+  //Uncomment this to autostart the video and insert a [MUSIC PLAYING] in the first cell for batches of mostly audio only files
+  if($(".modal-footer button").click().length==0)
   {
-  // angular.element($(".active-cell")).scope().cell.setWords("[MUSIC PLAYING]");
-  // angular.element($(".active-cell")).scope().$apply();
-  // angular.element($(".active-cell").eq(6)).scope().paragraph.transcript.makeNewParagraph(angular.element($(".active-cell").eq(6)).scope().cell);
-  // angular.element($("videogular")).scope().ctrl.tpVideoService.playerApi.play();
-  // always4 = setInterval(function(){setSpeedTo(4.0)}, 100);
-  // $(".fa-check").parent().click();
+    setTimeout(onStartup, 100);
+    return;
   }
-  catch
+  
+  if(angular.element($(".active-cell")).scope().cell.words == "[NO SPEECH]")
   {
+    angular.element($(".active-cell")).scope().cell.setWords("[MUSIC PLAYING]");
+    angular.element($(".active-cell")).scope().$apply();
+    angular.element($(".active-cell").eq(6)).scope().paragraph.transcript.makeNewParagraph(angular.element($(".active-cell").eq(6)).scope().cell);
+    angular.element($("videogular")).scope().ctrl.tpVideoService.playerApi.play();
+    always4 = setInterval(function(){setSpeedTo(8.0)}, 100);
+    $(".fa-check").parent().click();
   }
-  return $(".modal-footer button").click().length;
+  
 }
 
-startupInterval = setInterval(function(){
-  if(onStartup())
-  {
-    clearInterval(startupInterval);
-  }
-}, 1000);
+onStartup();
 
 //Adds the following functunality to within a job
 // Ctr + [ decreases playback speed by 0.1
@@ -139,7 +138,7 @@ setSpeedTo = function(speed)
 changeSpeed = function(changeBy, updateCookie) {
   //     <input type="range" ng-model="ctrl.userSetting.video_playback_rate" min="0.5" max="2" step="0.1" class="ng-valid ng-not-empty ng-dirty ng-valid-parse ng-touched">
   speed = $("*[ng-model='ctrl.userSetting.video_playback_rate']");
-  speed.attr("max", 4);
+  speed.attr("max", 8);
   speed.val(parseFloat(speed.val()) + changeBy);
   angular.element(speed).triggerHandler("input");
   updateDisplay(speed.val());
@@ -381,6 +380,7 @@ saveParagraph = function(index, callback)
 
 deleteFiles = function(deleteNonPermanent)
 {
+  console.log("Deleting files");
   durations = Object.keys(localStorage).filter(k=> k.split(":").length==3);
   deleted = false;
   for (duration of durations)
@@ -388,19 +388,19 @@ deleteFiles = function(deleteNonPermanent)
     files = JSON.parse(localStorage.getItem(duration));
     for (file in files)
     {
+      console.log(files[file].expiration < Infinity);
       if(Date.now() - files[file].expiration > 0 || (deleteNonPermanent && files[file].expiration < Infinity))
       {
-        console.log(file);
+        console.log("Deleting file:" + JSON.stringify(files[file]));
         deleted = delete files[file];
         localStorage.removeItem(file);
-        console.log()
       }
       else
       {
-        //console.log(fileInfo);
+        console.log("Couldn't delete the following file: " + JSON.stringify(files[file]));
       }
     }
-    Object.keys(duration).count ? localStorage.setItem(duration, JSON.stringify(files)) : localStorage.removeItem(duration);
+    //Object.keys(duration).length ? localStorage.setItem(duration, JSON.stringify(files)) : localStorage.removeItem(duration);
   }
   return deleted;
 }
@@ -414,17 +414,13 @@ saveFileData = function(fileData)
   }
   catch(error)
   {
-    if(!deleteFiles(false))
+    if(!deleteFiles(false) && ! deleteFiles(true))
     {
-      saveFileData(fileData);
-    }
-    else if(!deleteFiles(true))
-    {
-      saveFileData(fileData);
+      alert("Couldn't free up space to save file: " + error);
     }
     else
     {
-      alert("Couldn't free up space to save file");
+      saveFileData(fileData);
     }
   }
 }
@@ -552,7 +548,6 @@ createParagraphs = function(cellsData, startingTimestamp)
   startingTimestamp = startingTimestamp ? startingTimestamp : 0;
   firstCells = $(".tp-transcript-paragraph span:first-child").filter(function(){return parseInt($(this).attr("timestamp")) >= parseInt(startingTimestamp)}).slice(1);
   
-  console.log(cellsData);
   for(cell of firstCells)
   {
     if($(cell).hasClass("active-cell"))
@@ -560,8 +555,6 @@ createParagraphs = function(cellsData, startingTimestamp)
       //Set the words so that it updates the speaker IDs if needed
       scope = angular.element($(cell)).scope();
       scope.cell.setWords(scope.cell.words);
-      console.log(cellsData[$(cell).attr("timestamp")]);
-      console.log($(cell).attr("timestamp"));
       if(!cellsData[$(cell).attr("timestamp")] || !cellsData[$(cell).attr("timestamp")].isFirstInParagraph)
       {
         $(cell).click();
@@ -569,9 +562,9 @@ createParagraphs = function(cellsData, startingTimestamp)
       }
       else
       {
-        console.log("Not removing paragraph");
-        console.log(cell);
-        console.log(cellsData[$(cell).attr("timestamp")]);
+        // console.log("Not removing paragraph");
+        // console.log(cell);
+        // console.log(cellsData[$(cell).attr("timestamp")]);
       }
     }
     else
@@ -610,6 +603,46 @@ populateParagraph = function(index, cellsData, previousParagraphTimestamp)
   populateParagraph(index-1, cellsData, parseInt(cells[0].getAttribute("timestamp")));
 }
 
+breakUpCells = function(cellData, timestamp)
+{
+  cells = $(".tp-transcript-paragraph span").filter(function(){return parseInt($(this).attr("timestamp"))>=parseInt(timestamp)});
+  for (let cellIndex = 0; cellIndex<cells.length; cellIndex++)
+  {
+    cell = cells[cellIndex];
+    nextCell = cells[cellIndex+1];
+    if(!$(cell).hasClass("active-cell"))
+    {
+      $(cell).click();
+      setTimeout(breakUpCells, 100, cellData, parseInt($(cell).attr("timestamp")));
+      return;
+    }
+    startingTimestamp = parseInt($(cell).attr("timestamp"));
+    endingTimestamp = nextCell ? parseInt($(nextCell).attr("timestamp")) : Infinity;
+    fileCells = Object.keys(cellData).filter(i=> parseInt(i)>=startingTimestamp && parseInt(i) < endingTimestamp);
+    if(fileCells.length>1)
+    {
+      words = "a";
+      times = Math.round((endingTimestamp-startingTimestamp)/(fileCells[1] - fileCells[0]));
+      for(let i = 0; i<times - 1; i++)
+      {
+        words = words +" a";
+      }
+      scope = angular.element($(cell)).scope();
+      scope.cell.setWords(words);
+      scope.paragraph.transcript.splitCell(scope.cell);
+      scope.$apply();
+      breakUpCells(cellData, fileCells[1]);
+      return;
+    }
+  }
+  
+  console.log("Done breakingUpCells");
+  
+  // console.log("Starting to populate paragraphs");
+  paragraphCount = $(".tp-transcript-paragraph").length;
+  populateParagraph(paragraphCount-1, cellData, Infinity);
+}
+
 populateData = function() 
 {
   
@@ -625,18 +658,9 @@ populateData = function()
     return;
   }
   
-  //console.log("Starting to populate paragraphs");
   fileData = getFileData(idToLoad);
-  paragraphCount = $(".tp-transcript-paragraph").length;
-  if (parseID() == idToLoad) 
-  {
-    populateParagraph(paragraphCount-1, fileData.original, Infinity);
-  }
-  else
-  {
-    populateParagraph(paragraphCount-1, fileData.edited, Infinity);
-  }
-  
+  cellData = parseID() == idToLoad ? fileData.original : fileData.edited;
+  breakUpCells(cellData, 0);
 }
 
 loadFileSelector();
