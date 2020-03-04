@@ -493,154 +493,246 @@ loadFileSelector = function()
   $("#duplicate_data").change(populateData);
 }
 
-populateCell = function(cell, cellsData, previousParagraphTimestamp)
+// populateCell = function(cell, cellsData, previousParagraphTimestamp)
+// {
+//   nextCell = $(cell).next()[0];
+//   nextTimestamp = nextCell ? parseInt(nextCell.getAttribute("timestamp")) : previousParagraphTimestamp;
+//   timestamp = cell.getAttribute("timestamp");
+//   scope = angular.element($(cell)).scope();
+  
+//   times = Object.keys(cellsData).filter(i => parseInt(i) >= timestamp && parseInt(i) < nextTimestamp).sort((n1, n2) => parseInt(n2) - parseInt(n1));
+  
+//   words = "";
+  
+  
+//   for (time of times)
+//   {
+//     cellData = cellsData[time];
+//     words = (cellData["words"] + " " + words).trim();
+//     scope.cell.setFlagged(cellData["flagged"] || times.length>1);
+//     scope.cell.setTags(cellData["tags"]);
+//     scope.cell.setItalics(cellData["italicized"]);
+//     scope.cell.setBookmarked(cellData["bookmarked"]);
+//   }
+//   scope.cell.setWords(words);
+//   if(scope.cell.dirty)
+//   {
+//     scope.$apply();
+//   }
+// }
+
+// createParagraphs = function(cellsData, startingTimestamp)
+// {
+//   //Create new paragraphs where they should be
+//   cellsToBreakOn = Object.keys(cellsData).filter(i=>cellsData[i].isFirstInParagraph && !cellsData[i].isBroken);
+//   for(cellToBreakOn of cellsToBreakOn)
+//   {
+//     cells = $(".tp-transcript-paragraph span").filter(function(){return parseInt($(this).attr("timestamp"))<=parseInt(cellToBreakOn)});
+//     cell = cells[cells.length-1];
+//     if($(cell).hasClass("active-cell"))
+//     {
+//       scope = angular.element($(cell)).scope();
+//       scope.paragraph.transcript.makeNewParagraph(scope.cell);
+//       scope.$apply();
+//       cellsData[cellToBreakOn].isBroken = true;
+//     }
+//     else
+//     {
+//       $(cell).click();
+//       setTimeout(createParagraphs, 100, cellsData);
+//       return;
+//     }
+//   }
+  
+//   //Now merge the paragraphs back up that shouldn't be a new paragraph
+//   startingTimestamp = startingTimestamp ? startingTimestamp : 0;
+//   firstCells = $(".tp-transcript-paragraph span:first-child").filter(function(){return parseInt($(this).attr("timestamp")) >= parseInt(startingTimestamp)}).slice(1);
+  
+//   for(cell of firstCells)
+//   {
+//     if($(cell).hasClass("active-cell"))
+//     {
+//       //Set the words so that it updates the speaker IDs if needed
+//       scope = angular.element($(cell)).scope();
+//       scope.cell.setWords(scope.cell.words);
+//       if(!cellsData[$(cell).attr("timestamp")] || !cellsData[$(cell).attr("timestamp")].isFirstInParagraph)
+//       {
+//         $(cell).click();
+//         scope.paragraph.transcript.removeParagraph(scope.paragraph.transcript.userCellParagraph());
+//       }
+//       else
+//       {
+//         // console.log("Not removing paragraph");
+//         // console.log(cell);
+//         // console.log(cellsData[$(cell).attr("timestamp")]);
+//       }
+//     }
+//     else
+//     {
+//       cell.click();
+//       setTimeout(createParagraphs, 100, cellsData, $(cell).attr("timestamp"));
+//       return;
+//     }
+//   }
+//   angular.element($(".active-cell").eq(0)).scope().$apply();
+  
+  
+// }
+
+// populateParagraph = function(index, cellsData, previousParagraphTimestamp)
+// {
+//   //Load paragraph if needed
+//   if($(".tp-transcript-paragraph").eq(index).children("span").not(".active-cell").length > 0)
+//   {
+//     //console.log("Reloading paragraph:" + index);
+//     $(".tp-transcript-paragraph").eq(index).children("span").click();
+//     setTimeout(populateParagraph, 100, index, cellsData);
+//     return;
+//   }
+  
+//   //Break the paragraphs now that all the words are loaded
+//   if(index < 0)
+//   {
+//     createParagraphs(cellsData, 0);
+//     return;
+//   }
+  
+//   //console.log("populating paragraph:" + index);
+//   cells = $(".tp-transcript-paragraph").eq(index).children(".active-cell").each(function(){
+//     populateCell(this, cellsData, previousParagraphTimestamp)});
+//   populateParagraph(index-1, cellsData, parseInt(cells[0].getAttribute("timestamp")));
+// }
+
+// breakUpCells = function(cellData, timestamp)
+// {
+//   cells = $(".tp-transcript-paragraph span").filter(function(){return parseInt($(this).attr("timestamp"))>=parseInt(timestamp)});
+//   for (let cellIndex = 0; cellIndex<cells.length; cellIndex++)
+//   {
+//     cell = cells[cellIndex];
+//     nextCell = cells[cellIndex+1];
+//     if(!$(cell).hasClass("active-cell"))
+//     {
+//       $(cell).click();
+//       setTimeout(breakUpCells, 100, cellData, parseInt($(cell).attr("timestamp")));
+//       return;
+//     }
+//     startingTimestamp = parseInt($(cell).attr("timestamp"));
+//     endingTimestamp = nextCell ? parseInt($(nextCell).attr("timestamp")) : Infinity;
+//     fileCells = Object.keys(cellData).filter(i=> parseInt(i)>=startingTimestamp && parseInt(i) < endingTimestamp);
+//     if(fileCells.length>1)
+//     {
+//       words = "a";
+//       times = Math.round((endingTimestamp-startingTimestamp)/(fileCells[1] - fileCells[0]));
+//       for(let i = 0; i<times - 1; i++)
+//       {
+//         words = words +" a";
+//       }
+//       scope = angular.element($(cell)).scope();
+//       scope.cell.setWords(words);
+      
+//       scope.$apply();
+//       breakUpCells(cellData, fileCells[1]);
+//       return;
+//     }
+//   }
+  
+//   console.log("Done breakingUpCells");
+  
+//   // console.log("Starting to populate paragraphs");
+//   paragraphCount = $(".tp-transcript-paragraph").length;
+//   populateParagraph(paragraphCount-1, cellData, Infinity);
+// }
+
+populateLeftoverCells = function(cellsData)
 {
-  nextCell = $(cell).next()[0];
-  nextTimestamp = nextCell ? parseInt(nextCell.getAttribute("timestamp")) : previousParagraphTimestamp;
-  timestamp = cell.getAttribute("timestamp");
-  scope = angular.element($(cell)).scope();
-  
-  times = Object.keys(cellsData).filter(i => parseInt(i) >= timestamp && parseInt(i) < nextTimestamp).sort((n1, n2) => parseInt(n2) - parseInt(n1));
-  
-  words = "";
-  
-  
-  for (time of times)
+  console.log(cellsData);
+  i = 0;
+  cells = $(".tp-transcript-paragraph span");
+  for(timestamp of Object.keys(cellsData))
   {
-    cellData = cellsData[time];
-    words = (cellData["words"] + " " + words).trim();
-    scope.cell.setFlagged(cellData["flagged"] || times.length>1);
-    scope.cell.setTags(cellData["tags"]);
-    scope.cell.setItalics(cellData["italicized"]);
-    scope.cell.setBookmarked(cellData["bookmarked"]);
-  }
-  scope.cell.setWords(words);
-  if(scope.cell.dirty)
-  {
+    console.log(timestamp);
+    cell = cells[i];
+    nextCell = cells[i+1];
+    cellTimestamp = parseInt($(cell).attr("timestamp"));
+    nextTimestamp = nextCell ? parseInt($(nextCell).attr("timestamp")) : Infinity;
+    
+    while(parseInt(timestamp)>nextTimestamp)
+    {
+      i++;
+      cell = cells[i];
+      nextCell = cells[i+1];
+      cellTimestamp = parseInt($(cell).attr("timestamp"));
+      nextTimestamp = nextCell ? parseInt($(nextCell).attr("timestamp")) : Infinity;
+    }
+    
+    if(!$(nextCell).is(".active-cell"))
+    {
+      $(nextCell).click();
+      setTimeout(populateLeftoverCells, 10, cellsData);
+      return;
+    }
+    
+    cellData = cellsData[timestamp];
+    
+    if(cellData.speakerLabel)
+    {
+      console.log(cell);
+      console.log(cellData);
+      console.log(nextCell);
+      console.log("---------------------");
+    }
+    
+    scope = angular.element($(nextCell)).scope();
+    scope.cell.setWords((cellData.words + " " + scope.cell.words).trim());
     scope.$apply();
+    delete cellsData[timestamp];
+    
+    console.log(cell);
+    console.log(cellData);
+    console.log(nextCell);
+    console.log("---------------------");
+    
+    // if(cellsData.isFirstInParagraph)
+    // {
+    //   console.log(cellData);
+    //   return;
+    // }
+    
   }
 }
 
-createParagraphs = function(cellsData, startingTimestamp)
+populateCells = function(cellsData, startingIndex)
 {
-  //Create new paragraphs where they should be
-  cellsToBreakOn = Object.keys(cellsData).filter(i=>cellsData[i].isFirstInParagraph && !cellsData[i].isBroken);
-  for(cellToBreakOn of cellsToBreakOn)
+  cells = $(".tp-transcript-paragraph span");
+  for (let i = startingIndex; i<cells.length; i++)
   {
-    cells = $(".tp-transcript-paragraph span").filter(function(){return parseInt($(this).attr("timestamp"))<=parseInt(cellToBreakOn)});
-    cell = cells[cells.length-1];
-    if($(cell).hasClass("active-cell"))
+    cell = cells[i];
+    if(!$(cell).is(".active-cell"))
     {
-      scope = angular.element($(cell)).scope();
+      $(cell).click();
+      setTimeout(populateCells, 10, cellData, i);
+      return;
+    }
+    scope = angular.element($(cell)).scope();
+    timestamp = $(cell).attr("timestamp");
+    cellData = cellsData[timestamp];
+    scope.cell.setWords(cellData ? cellData.words : "");
+    scope.cell.setFlagged(cellData ? cellData.flagged : false);
+    scope.cell.setBookmarked(cellData ? cellData.bookmarked : false);
+    scope.cell.setItalics(cellData ? cellData.italicized : false);
+    scope.$apply();
+    delete cellsData[timestamp];
+    
+    if(cellData && cellData.isFirstInParagraph)
+    {
       scope.paragraph.transcript.makeNewParagraph(scope.cell);
       scope.$apply();
-      cellsData[cellToBreakOn].isBroken = true;
-    }
-    else
-    {
-      $(cell).click();
-      setTimeout(createParagraphs, 100, cellsData);
+      setTimeout(populateCells, 10, cellsData, i+1);
       return;
     }
   }
   
-  //Now merge the paragraphs back up that shouldn't be a new paragraph
-  startingTimestamp = startingTimestamp ? startingTimestamp : 0;
-  firstCells = $(".tp-transcript-paragraph span:first-child").filter(function(){return parseInt($(this).attr("timestamp")) >= parseInt(startingTimestamp)}).slice(1);
-  
-  for(cell of firstCells)
-  {
-    if($(cell).hasClass("active-cell"))
-    {
-      //Set the words so that it updates the speaker IDs if needed
-      scope = angular.element($(cell)).scope();
-      scope.cell.setWords(scope.cell.words);
-      if(!cellsData[$(cell).attr("timestamp")] || !cellsData[$(cell).attr("timestamp")].isFirstInParagraph)
-      {
-        $(cell).click();
-        scope.paragraph.transcript.removeParagraph(scope.paragraph.transcript.userCellParagraph());
-      }
-      else
-      {
-        // console.log("Not removing paragraph");
-        // console.log(cell);
-        // console.log(cellsData[$(cell).attr("timestamp")]);
-      }
-    }
-    else
-    {
-      cell.click();
-      setTimeout(createParagraphs, 100, cellsData, $(cell).attr("timestamp"));
-      return;
-    }
-  }
-  angular.element($(".active-cell").eq(0)).scope().$apply();
-  
-  
-}
-
-populateParagraph = function(index, cellsData, previousParagraphTimestamp)
-{
-  //Load paragraph if needed
-  if($(".tp-transcript-paragraph").eq(index).children("span").not(".active-cell").length > 0)
-  {
-    //console.log("Reloading paragraph:" + index);
-    $(".tp-transcript-paragraph").eq(index).children("span").click();
-    setTimeout(populateParagraph, 100, index, cellsData);
-    return;
-  }
-  
-  //Break the paragraphs now that all the words are loaded
-  if(index < 0)
-  {
-    createParagraphs(cellsData, 0);
-    return;
-  }
-  
-  //console.log("populating paragraph:" + index);
-  cells = $(".tp-transcript-paragraph").eq(index).children(".active-cell").each(function(){
-    populateCell(this, cellsData, previousParagraphTimestamp)});
-  populateParagraph(index-1, cellsData, parseInt(cells[0].getAttribute("timestamp")));
-}
-
-breakUpCells = function(cellData, timestamp)
-{
-  cells = $(".tp-transcript-paragraph span").filter(function(){return parseInt($(this).attr("timestamp"))>=parseInt(timestamp)});
-  for (let cellIndex = 0; cellIndex<cells.length; cellIndex++)
-  {
-    cell = cells[cellIndex];
-    nextCell = cells[cellIndex+1];
-    if(!$(cell).hasClass("active-cell"))
-    {
-      $(cell).click();
-      setTimeout(breakUpCells, 100, cellData, parseInt($(cell).attr("timestamp")));
-      return;
-    }
-    startingTimestamp = parseInt($(cell).attr("timestamp"));
-    endingTimestamp = nextCell ? parseInt($(nextCell).attr("timestamp")) : Infinity;
-    fileCells = Object.keys(cellData).filter(i=> parseInt(i)>=startingTimestamp && parseInt(i) < endingTimestamp);
-    if(fileCells.length>1)
-    {
-      words = "a";
-      times = Math.round((endingTimestamp-startingTimestamp)/(fileCells[1] - fileCells[0]));
-      for(let i = 0; i<times - 1; i++)
-      {
-        words = words +" a";
-      }
-      scope = angular.element($(cell)).scope();
-      scope.cell.setWords(words);
-      scope.paragraph.transcript.splitCell(scope.cell);
-      scope.$apply();
-      breakUpCells(cellData, fileCells[1]);
-      return;
-    }
-  }
-  
-  console.log("Done breakingUpCells");
-  
-  // console.log("Starting to populate paragraphs");
-  paragraphCount = $(".tp-transcript-paragraph").length;
-  populateParagraph(paragraphCount-1, cellData, Infinity);
+  populateLeftoverCells(cellsData);
 }
 
 populateData = function() 
@@ -660,7 +752,8 @@ populateData = function()
   
   fileData = getFileData(idToLoad);
   cellData = parseID() == idToLoad ? fileData.original : fileData.edited;
-  breakUpCells(cellData, 0);
+  //breakUpCells(cellData, 0);
+  populateCells(cellData, 0);
 }
 
 loadFileSelector();
