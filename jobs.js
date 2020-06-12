@@ -78,6 +78,16 @@
   return n(function() {})
 });
 
+scope = function()
+{
+  return angular.element($(".user-selected")).scope() || angular.element($(".active-cell")).scope();
+}
+
+transcript = function()
+{
+  return scope().cell.transcript;
+}
+
 //This function fires on startup
 always4 = null;
 previousSpeed = 2.0;
@@ -85,7 +95,6 @@ previousSpeed = 2.0;
 onStartup = function()
 {
   console.log("Starting up");
-  //Uncomment this to autostart the video and insert a [MUSIC PLAYING] in the first cell for batches of mostly audio only files
   if($(".modal-footer button").click().length==0)
   {
     setTimeout(onStartup, 100);
@@ -94,14 +103,23 @@ onStartup = function()
   
   if(angular.element($(".active-cell")).scope().cell.words == "[NO SPEECH]")
   {
-    angular.element($(".active-cell")).scope().cell.setWords("[MUSIC PLAYING]");
-    angular.element($(".active-cell")).scope().$apply();
+    words = "[MUSIC PLAYING]";
+    if($(".panel:contains('Handle Instrumental Music Only - Return')").length)
+    {
+      words = "RETURN RETURN RETURN RETURN RETURN RETURN RETURN";
+      
+    }
+    scope().cell.setWords(words);
+    scope().$apply();
     angular.element($(".active-cell").eq(6)).scope().paragraph.transcript.makeNewParagraph(angular.element($(".active-cell").eq(6)).scope().cell);
     angular.element($("videogular")).scope().ctrl.tpVideoService.playerApi.play();
     always4 = setInterval(function(){setSpeedTo(8.0)}, 100);
     $(".fa-check").parent().click();
   }
-  
+  else
+  {
+    $("#finish-dropdown li").not(":eq(1)").remove();
+  }
 }
 
 onStartup();
@@ -178,13 +196,26 @@ updateTimeWorked = function() {
     expires: 1
   });
   elapsed_time = Math.max(0, now.getTime() - last_keypress);
-  if (elapsed_time < 5000) {
+  if (elapsed_time < 60000) {
     working_time = working_time + elapsed_time;
     Cookies.set('working_time', working_time, {
       expires: 1
     });
   }
-  changeSpeed(0.0);
+  //changeSpeed(0.0);
+}
+
+setMacro = function(word, isSpeaker, index)
+{
+  macroWords = $("[ng-model='macroData.words']");
+  macroSpeakers = $("[ng-click='ctrl.toggleMacroSpeakerLabel(macroData.id)']");
+  macroWords[index].value = word;
+  $(macroWords[index]).trigger("input");
+  speakerChecked = macroSpeakers[index].value == "true";
+  if (speakerChecked != isSpeaker) 
+  {
+    $(macroSpeakers[index]).click();
+  }
 }
 
 save_and_load_macros = function(e)
@@ -192,8 +223,6 @@ save_and_load_macros = function(e)
   index = e.which - 97;
   var macroWords;
   if (e.which != f12 && e.which != f11) {
-    macroWords = $("[ng-model='macroData.words']");
-    macroSpeakers = $("[ng-click='ctrl.toggleMacroSpeakerLabel(macroData.id)']");
     index = e.which - 97;
     if (index < 0) {
       index = 9;
@@ -204,7 +233,7 @@ save_and_load_macros = function(e)
   if (macroWord.split("||").length == 2) {
     key = macroWord.split("||")[0];
     value = macroWord.split("||")[1];
-    localStorage.setItem(key, value);
+    localStorage.setItem(key.toLowerCase(), value);
     macroWord = key;
   }
 
@@ -213,33 +242,37 @@ save_and_load_macros = function(e)
     macroWord = localStorage.getItem(macroWord.toLowerCase());
   }
   
-  angular.element($(".user-selected")).scope().cell.setWords(macroWord);
-  //angular.element($(".user-selected")).scope().cell.setDirty(true);
-  if(macroWord[macroWord.length-1] == ":")
-  {
-    angular.element($(".user-selected")).scope().cell.setSpeakerLabel(macroWord.substr(0, macroWord.length-1));
-  }
-  angular.element($(".user-selected")).scope().$apply();
+  scope().cell.setWords(macroWord);
+  scope().$apply();
+  
+  console.log(macroWord);
+  
 
   if (e.which == f12 || e.which == f11) {
     e.preventDefault;
     return;
   }
 
-  is_speaker = macroWord[macroWord.length - 1] == ":";
-
-  macroWords[index].value = macroWord;
-  $(macroWords[index]).trigger("input");
-  speaker_checked = macroSpeakers[index].value == "true";
-  if (speaker_checked != is_speaker) {
-    $(macroSpeakers[index]).click();
-  }
+  isSpeaker = macroWord[macroWord.length - 1] == ":";
+  setMacro(macroWord, isSpeaker, index);
+  
   e.preventDefault();
 }
 
 previousSpace = Date.now();
 initialToggle = false;
-document.onkeydown = function(e) 
+
+macroTriggered = function(e)
+{
+  if (scope().cell.speakerLabel)
+  {
+    scope().cell.setWords("");
+    scope().$apply();
+  }
+}
+
+$("body").attr("tabindex", -1);
+$("body").keydown(function(e) 
 {
   if (!initialToggle) 
   {
@@ -261,6 +294,8 @@ document.onkeydown = function(e)
   f12 = 123;
   k = 75;
   d = 68;
+  m = 77;
+  l = 76;
   left = 37;
   right = 39;
 
@@ -268,22 +303,15 @@ document.onkeydown = function(e)
   {
     return;
   }
-
+  
   if ((e.which >= 96 && e.which <= 105) || e.which == f12 || e.which == f11) 
   {
     save_and_load_macros(e);
   }
   
-  if(e.which == 37)
+  if(e.ctrlKey && !e.shiftKey && e.which >= 48 && e.which <=57)
   {
-    selectedTimestamp = parseInt($(".user-selected").attr("timestamp"));
-    $(".cell-flagged").filter(function(){return $(this).attr("timestamp")<selectedTimestamp}).eq(0).click();
-  }
-  
-  if(e.which == 39)
-  {
-    selectedTimestamp = parseInt($(".user-selected").attr("timestamp"));
-    $(".cell-flagged").filter(function(){return $(this).attr("timestamp")>selectedTimestamp}).eq(0).click();
+    macroTriggered(e);
   }
 
   switch (e.which) 
@@ -303,15 +331,60 @@ document.onkeydown = function(e)
       previousSpace = Date.now(0);
       break;
     case f5:
+      break;l
     case k:
-      e.preventDefault();
       break;
+    case m:
+       removeHyphen(e);
+       break;
+    case l:
+      splitHyphen();
+      break;
+  }
+});
+
+removeHyphen = function(e)
+{
+  words = scope().cell.words;
+  if(words.replace("-", "") != words && words[words.length-1] != "-")
+  {
+    scope().cell.setWords(words.replace("-", ""));
+    scope().$apply();
+    e.stopPropagation();
+    e.preventDefault();
+  }
+}
+
+splitHyphen = function()
+{
+  if(scope().cell.words.replace("-", "") != scope().cell.words)
+  {
+    scope().cell.setWords(scope().cell.words.replace("-", " "));
+    scope().$apply();
+  }
+}
+
+loadSpeakerIDs = function()
+{
+  ids = [];
+  cells = $(".tp-transcript-paragraph span:first-child").each(function()
+  {
+    if(this.textContent.trim()[this.textContent.trim().length - 1] == ":" && ids.indexOf(this.textContent.trim())==-1)
+    {
+      ids.push(this.textContent.trim());
+    }
+  });
+  
+  for(i in ids)
+  {
+    id = ids[i];
+    setMacro(id, true, i);
   }
 }
 
 parseDuration = function()
 {
-  return $(".tp-transcript-controls span.ng-binding:eq(0)").text().split("/ ")[1];
+  return $(".tab-pane:eq(6) td.ng-binding:eq(13)").text();
 }
 
 parseName = function()
@@ -332,8 +405,7 @@ getFileData = function(id)
 
 getDurationData = function()
 {
-  //console.log("Getting durationData");
-  //Remove any files that are expired
+  //console.log("Getting durationData");  
   data = JSON.parse(localStorage.getItem(parseDuration()));
   return data;
 }
@@ -378,7 +450,7 @@ saveFileData = function()
 {
   console.log("Saving fileData");
   fileData = getFileData(parseID());
-  content = angular.element($(".active-cell")).scope().paragraph.transcript.tpTranscriptSaveService.emergencySaveContent();
+  content = transcript().tpTranscriptSaveService.emergencySaveContent();
   if(!fileData)
   {
     fileData = {};
@@ -447,7 +519,7 @@ loadFileSelector = function()
   durationData = getDurationData();
   $("#duplicate_data").remove();
   select = "<select id = 'duplicate_data'><option value='blank'></option>";
-  for (id in durationData) 
+  for (id of Object.keys(durationData).reverse()) 
   {
     name = id != parseID() ? durationData[id].name : "Original ASR";
     select = select + "<option value = '" + id + "'>" + name + "</option>";
@@ -470,7 +542,7 @@ fixedData = function(fileData, currentData)
   //Overwrites the timestamp from the currentFile or creates a new entry in the output
   for(timestamp in fileData.words)
   {
-    output.words[timestamp] = fileData.words[timestamp];
+    output.words[parseInt(timestamp)] = fileData.words[timestamp];
   }
   
   //Now sort the timestamps
@@ -531,39 +603,124 @@ fixedData = function(fileData, currentData)
   return output;
 }
 
-populateData = function() 
+fitInRange = function(fileData, start, end)
 {
-  idToLoad = $("#duplicate_data").val();
+  if(!start)
+  {
+    return fileData;
+  }
+  console.log(fileData);
+  newWords = {}
+  for(time in fileData.words)
+  {
+    if(parseInt(time) >=start && parseInt(time) <= end)
+    {
+      newWords[parseInt(time)-start] = fileData.words[time];
+    }
+  }
+  newParagraphs = [];
+  for(paragraph of fileData.paragraphs)
+  {
+    if (parseInt(paragraph) >=start && parseInt(paragraph) <= end)
+    {
+      newParagraphs.push(parseInt(paragraph)-parseInt(start));
+    }
+  }
+  
+  return {"words":newWords, "paragraphs":newParagraphs};
+}
+
+populateData = function(e, id, startingRange, endingRange) 
+{
+  idToLoad = id ? id : $("#duplicate_data").val();
   if(idToLoad == "blank")
   {
     return;
   }
-  scope = angular.element($(".active-cell")).scope();
-  transcript = scope.cell.transcript;
-  emergencySaveContent = transcript.tpTranscriptSaveService.emergencySaveContent();
+  emergencySaveContent = transcript().tpTranscriptSaveService.emergencySaveContent();
   unfixedData = idToLoad == parseID() ? getFileData(idToLoad).original : getFileData(idToLoad).edited;
-  console.log(unfixedData.paragraphs);
+  fileData = fitInRange(unfixedData, startingRange, endingRange);
+  //console.log(fileData);
   fileData = fixedData(unfixedData, emergencySaveContent);
-  console.log(fileData.paragraphs);
   
   for(timestamp in fileData.words)
   {
-    cell = transcript.getCell(timestamp) ? transcript.getCell(timestamp) : transcript.createCell(timestamp, "");
+    cell = transcript().getCell(timestamp) ? transcript().getCell(timestamp) : transcript().createCell(timestamp, "");
     cell.setWords(fileData.words[timestamp].replace("<i>", "").replace("</i>", ""));
     cell.setItalics(fileData.words[timestamp].indexOf("</i>") != -1);
-    scope.$apply();
+    scope().$apply();
     
-    if(cell.isFirstInParagraph() && fileData.paragraphs.indexOf(parseInt(timestamp)) < 0)
+    if(cell.isFirstInParagraph() && fileData.paragraphs.indexOf(parseInt(timestamp)) == -1 && transcript().findCellParagraph(cell).paragraph > 0)
     {
-      transcript.removeParagraph(transcript.findCellParagraph(cell).paragraph);
+      transcript().removeParagraph(transcript().findCellParagraph(cell).paragraph);
     }
     else if(!cell.isFirstInParagraph() && fileData.paragraphs.indexOf(parseInt(timestamp)) != -1)
     {
-      transcript.makeNewParagraph(cell);
+      transcript().makeNewParagraph(cell);
     }
   }
-  scope.$apply();
+  scope().$apply();
+  loadSpeakerIDs();
+  
+  //setTimeout(checkadjacentwords, 5000);
+  
 }
+
+checkadjacentwords = function(){
+  
+  dirtycells = $("span.cell-dirty");
+  console.log(dirtycells);
+  console.log("got here");
+  for (let i = 1; i<dirtycells.length-1; i++)
+  {
+    dirtycell = transcript().getCell($(dirtycells[i]).attr("timestamp"));
+    prevdirtycell = transcript().getCell($(dirtycells[i-1]).attr("timestamp"));
+    nextdirtycell = transcript().getCell($(dirtycells[i+1]).attr("timestamp"));
+    if (prevdirtycell.originalData.words == dirtycell.words)
+    {
+      //prevdirtycell.setWords(dirtycell.words);
+      //dirtycell.setWords("");
+    }
+    if(nextdirtycell.originalData.words == dirtycell.words)
+    {
+      nextdirtycell.setWords(dirtycell.words);
+      dirtycell.setWords("");
+      i=i+1;
+    }
+  }
+}
+
+shiftright = function()
+{
+  
+  spans = $(".user-selected").parent().children();
+  for(let i = spans.length-2; i--; i>0)
+  {
+    span = spans[i];
+    cell = transcript().getCell($(span).attr("timestamp"));
+    nextSpan = spans[i+1];
+    nextCell = transcript().getCell($(nextSpan).attr("timestamp"));
+    nextCell.setWords(cell.words);
+  }
+  scope().$apply();
+}
+
+shiftleft = function()
+{
+  
+  spans = $(".user-selected").parent().children();
+  for(let i = 1; i--; i>spans.length)
+  {
+    span = spans[i];
+    cell = transcript().getCell($(span).attr("timestamp"));
+    prevSpan = spans[i+1];
+    prevCell = transcript().getCell($(prevSpan).attr("timestamp"));
+    prevCell.setWords(cell.words);
+  }
+  scope().$apply();
+  
+}
+
 
 loadFileSelector();
 
@@ -573,3 +730,5 @@ setInterval(function()
   $("#finish-dropdown a").off("mousedown");
   $("#finish-dropdown a").mousedown(saveData);
 }, 100);
+
+document.onmousemove = updateTimeWorked;
