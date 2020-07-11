@@ -376,6 +376,42 @@ $("body").keydown(function(e){
   }
 });
 
+$("body").keydown(function(e){
+  if(e.ctrlKey && e.which == 68)
+  {
+    words = scope().cell.words;
+    if(words.startsWith("--"))
+    {
+      scope().cell.setWords(words.substr(2));
+      scope().$apply();
+    }
+    else if (!words.endsWith("--"))
+    {
+      scope().cell.setWords("--" + words);
+      scope().$apply();
+      e.stopPropagation();
+    }
+  }
+});
+
+//Ctrl-P now spells a word instead of previewing it
+$("body").keydown(function(e){
+  if (e.ctrlKey && e.which == 80)
+  {
+    word = scope().cell.words;
+    spelledWord = "";
+    for(char of word)
+    {
+      spelledWord = spelledWord + char + "-";
+    }
+    spelledWord = spelledWord.split("---").join("");
+    spelledWord = spelledWord.substr(0, spelledWord.length-1).toUpperCase();
+    scope().cell.setWords(spelledWord);
+    scope().$apply();
+    e.stopPropagation();
+  }
+});
+
 removeHyphen = function(e)
 {
   words = scope().cell.words;
