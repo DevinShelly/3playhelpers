@@ -207,6 +207,8 @@ updateTimeWorked = function() {
 
 setMacro = function(word, isSpeaker, index)
 {
+  console.log(word);
+  console.log(index);
   macroWords = $("[ng-model='macroData.words']");
   macroSpeakers = $("[ng-click='ctrl.toggleMacroSpeakerLabel(macroData.id)']");
   macroWords[index].value = word;
@@ -220,9 +222,11 @@ setMacro = function(word, isSpeaker, index)
 
 save_and_load_macros = function(e)
 {
+  f12 = 123;
+  f11 = 122;
   index = e.which - 97;
   var macroWords;
-  if (e.which != f12 && e.which != f11) {
+  if (e.which != f11 && e.which != f12) {
     index = e.which - 97;
     if (index < 0) {
       index = 9;
@@ -252,6 +256,7 @@ save_and_load_macros = function(e)
     e.preventDefault;
     return;
   }
+  console.log(index);
 
   isSpeaker = macroWord[macroWord.length - 1] == ":";
   setMacro(macroWord, isSpeaker, index);
@@ -271,75 +276,103 @@ macroTriggered = function(e)
   }
 }
 
+followid = null; 
 $("body").attr("tabindex", -1);
-$("body").keydown(function(e) 
-{
-  if (!initialToggle) 
+
+//Block Ctrl-J from clearing the cell 
+$("body").keydown(function(e){
+  if (e.ctrlKey && e.which == 74) //ctrl + j
+  {
+    e.stopPropagation();
+    e.preventDefault();
+  }
+});
+
+//Update the timeworked and stop following the cursor with every keypress
+$("body").keydown(function(e){
+  updateTimeWorked();
+  clearInterval(followid);
+});
+
+//Initially toggle the speed
+$("body").keydown(function(e){
+  if (!initialToggle)
   {
     initialToggle = true;
     toggleSpeed();
     updateTimeWorked();
+    console.log("initial toggle")
   }
+});
 
-  threshhold = 1.0;
-  if (Math.random() < threshhold) {
-    updateTimeWorked();
-  }
-
-  leftBracket = 219;
-  rightBracket = 221;
-  space = 32;
-  f5 = 116;
-  f11 = 122;
-  f12 = 123;
-  k = 75;
-  d = 68;
-  m = 77;
-  l = 76;
-  left = 37;
-  right = 39;
-
-  if (!e.ctrlKey && e.which != f5 && e.which!= f11 && e.which != f12 && !(e.which == space && e.shiftKey) && !e.altKey && e.which < 96) 
-  {
-    return;
-  }
-  
-  if ((e.which >= 96 && e.which <= 105) || e.which == f12 || e.which == f11) 
+$("body").keydown(function(e){
+  if ((e.ctrlKey && e.shiftKey && (e.which >= 49 && e.which <= 57) || (e.which >=96 && e.which <= 105))  || e.which == 123 || e.which == 122)
   {
     save_and_load_macros(e);
   }
-  
-  if(e.ctrlKey && !e.shiftKey && e.which >= 48 && e.which <=57)
+});
+
+$("body").keydown(function(e){
+  if(e.ctrlKey && !e.shiftKey && ((e.which >= 48 && e.which <=57) || (e.which >=96 && e.which <=105)))
   {
     macroTriggered(e);
   }
+});
 
-  switch (e.which) 
+$("body").keydown(function(e){
+  if (e.ctrlKey && e.which == 219)
   {
-    case leftBracket:
-      changeSpeed(-0.1, true);
-      break;
-    case rightBracket:
-      changeSpeed(0.1, true);
-      break;
-    case space:
-      if (Date.now() - previousSpace < 500) 
+    changeSpeed(-0.1, true);
+    e.preventDefault();
+  }
+});
+
+$("body").keydown(function(e){
+  if (e.ctrlKey && e.which == 221)
+  {
+    changeSpeed(0.1, true);
+    e.preventDefault();
+  }
+});
+
+$("body").keydown(function(e){
+  if(e.shiftKey && e.which == 32)
+  {
+    if (Date.now() - previousSpace < 500) 
       {
         toggleSpeed();
         clearInterval(always4);
       }
       previousSpace = Date.now(0);
-      break;
-    case f5:
-      break;l
-    case k:
-      break;
-    case m:
-       removeHyphen(e);
-       break;
-    case l:
-      splitHyphen();
-      break;
+  }
+});
+
+//Be able to toggle Ctrl-K to clear shortcut overlay
+$("body").keydown(function(e){
+  if(e.ctrlKey && e.which == 75)
+  {
+    e.preventDefault();
+  }
+});
+
+$("body").keydown(function(e){
+  if(e.ctrlKey && e.which == 77)
+  {
+    removeHyphen(e);
+  }
+});
+
+$("body").keydown(function(e){
+  if(e.ctrlKey && e.which == 76)
+  {
+    splitHyphen(e);
+  }
+});
+
+$("body").keydown(function(e){
+  if(e.ctrlKey && e.shiftKey && e.which == 39)
+  {
+    followid = setInterval(function(){$(".video-highlighted").click()}, 10);
   }
 });
 
@@ -670,7 +703,6 @@ checkadjacentwords = function(){
   
   dirtycells = $("span.cell-dirty");
   console.log(dirtycells);
-  console.log("got here");
   for (let i = 1; i<dirtycells.length-1; i++)
   {
     dirtycell = transcript().getCell($(dirtycells[i]).attr("timestamp"));
