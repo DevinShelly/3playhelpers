@@ -207,8 +207,6 @@ updateTimeWorked = function() {
 
 setMacro = function(word, isSpeaker, index)
 {
-  console.log(word);
-  console.log(index);
   macroWords = $("[ng-model='macroData.words']");
   macroSpeakers = $("[ng-click='ctrl.toggleMacroSpeakerLabel(macroData.id)']");
   macroWords[index].value = word;
@@ -217,6 +215,7 @@ setMacro = function(word, isSpeaker, index)
   if (speakerChecked != isSpeaker) 
   {
     $(macroSpeakers[index]).click();
+    console.log("Clicking");
   }
 }
 
@@ -245,23 +244,26 @@ save_and_load_macros = function(e)
     key = macroWord;
     macroWord = localStorage.getItem(macroWord.toLowerCase());
   }
+  else if (parseInt(macroWord))
+  {
+    console.log("parsed Int");
+    macroWord = parseInt(macroWord).toLocaleString();
+  }
   
   scope().cell.setWords(macroWord);
   scope().$apply();
-  
-  console.log(macroWord);
   
 
   if (e.which == f12 || e.which == f11) {
     e.preventDefault;
     return;
   }
-  console.log(index);
 
   isSpeaker = macroWord[macroWord.length - 1] == ":";
   setMacro(macroWord, isSpeaker, index);
   
   e.preventDefault();
+  e.stopPropagation();
 }
 
 previousSpace = Date.now();
@@ -301,7 +303,6 @@ $("body").keydown(function(e){
     initialToggle = true;
     toggleSpeed();
     updateTimeWorked();
-    console.log("initial toggle")
   }
 });
 
@@ -377,7 +378,7 @@ $("body").keydown(function(e){
 });
 
 $("body").keydown(function(e){
-  if(e.ctrlKey && e.which == 68)
+  if(e.ctrlKey && e.which == 68 && ! e.shiftKey)
   {
     words = scope().cell.words;
     if(words.startsWith("--"))
@@ -387,7 +388,7 @@ $("body").keydown(function(e){
     }
     else if (!words.endsWith("--"))
     {
-      scope().cell.setWords("--" + words);
+      scope().cell.setWords("--" + words.toLowerCase());
       scope().$apply();
       e.stopPropagation();
     }
@@ -409,6 +410,21 @@ $("body").keydown(function(e){
     scope().cell.setWords(spelledWord);
     scope().$apply();
     e.stopPropagation();
+  }
+});
+
+$("body").keydown(function(e){
+  if(e.ctrlKey && e.which == 75) //Ctrl-K
+  {
+    e.stopPropagation();
+    e.preventDefault()
+  }
+});
+
+$("body").keydown(function(e){ 
+  if (e.ctrlKey && !e.shiftKey && e.which == 67 && $(".user-selected").length > 0 && $(document.activeElement).hasClass("tp-transcript")) //Ctrl-C copies cell contents to clipboard
+  {
+    navigator.clipboard.writeText($(".user-selected").text().trim());
   }
 });
 
@@ -622,6 +638,7 @@ fixedData = function(fileData, currentData)
   
   
   sortedTimesteps = Object.keys(output.words).sort((i, j) => parseInt(i)-parseInt(j));
+  selectedTimestamp = parseInt($(".user-selected").attr("timestamp"));
   for(timestepIndex in sortedTimesteps)
   {
     timestep = parseInt(sortedTimesteps[timestepIndex]);
