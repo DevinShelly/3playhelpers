@@ -428,6 +428,14 @@ $("body").keydown(function(e){
   }
 });
 
+$("body").keydown(function(e){ //Automatically copies the current cell contents into the Google search box and opens a search
+  if(e.ctrlKey && e.which == 71)
+  {
+    $("#google").val($(".user-selected").text().trim());
+    $("#google").parent().submit();
+  }
+});
+
 removeHyphen = function(e)
 {
   words = scope().cell.words;
