@@ -381,7 +381,7 @@ transcriptActive = function() {
 }
 
 $("body").keydown(function(e) {
-  if (e.ctrlKey && !e.shiftKey && e.which == 67 && transcriptActive()) //Ctrl-C copies cell contents to clipboard
+  if (e.ctrlKey && !e.shiftKey && (e.which == 67 || e.which == 88)  && transcriptActive()) //Ctrl-C or Ctrl-X copies cell contents to clipboard
   {
     navigator.clipboard.writeText($(".user-selected").text().trim());
   }
@@ -571,17 +571,23 @@ loadFileSelector = function() {
     select = select + "<option value = '" + id + "'>" + name + "</option>";
     if (parseName().indexOf(name) + name.indexOf(parseName()) != -2) {
       i = parseInt(id);
-      setTimeout(function() {
-        $("#duplicate_data").val(i);
+      fileToLoad = i;
+      setTimeout(function() 
+      {
+        if(scope().cell.words.indexOf("RETURN RETURN") == -1)
+        {
+          populateData(null, i);
+        }
       }, 500);
-      setTimeout(function() {
-        populateData(null, i);
-      }, 1000);
     }
   }
   select = select + "</select>";
   $($(".btn-group:last")).after(select);
   $("#duplicate_data").change(populateData);
+  if(fileToLoad)
+  {
+    $("#duplicate_data").val(fileToLoad);
+  }
 }
 
 fixedData = function(fileData, currentData) {
