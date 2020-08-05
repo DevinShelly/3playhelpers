@@ -661,42 +661,23 @@ fixedData = function(fileData, currentData) {
   return output;
 }
 
-fitInRange = function(fileData, start, end) {
-  if (!start) {
-    return fileData;
-  }
-  console.log(fileData);
-  newWords = {}
-  for (time in fileData.words) {
-    if (parseInt(time) >= start && parseInt(time) <= end) {
-      newWords[parseInt(time) - start] = fileData.words[time];
-    }
-  }
-  newParagraphs = [];
-  for (paragraph of fileData.paragraphs) {
-    if (parseInt(paragraph) >= start && parseInt(paragraph) <= end) {
-      newParagraphs.push(parseInt(paragraph) - parseInt(start));
-    }
-  }
-
-  return {
-    "words": newWords,
-    "paragraphs": newParagraphs
-  };
-}
-
-populateData = function(e, id, startingRange, endingRange) {
+populateData = function(e, id, startingRange=0, endingRange=1000*60*60*24)
+{
   idToLoad = id ? id : $("#duplicate_data").val();
   if (idToLoad == "blank") {
     return;
   }
   emergencySaveContent = transcript().tpTranscriptSaveService.emergencySaveContent();
   unfixedData = idToLoad == parseID() ? getFileData(idToLoad).original : getFileData(idToLoad).edited;
-  fileData = fitInRange(unfixedData, startingRange, endingRange);
-  //console.log(fileData);
   fileData = fixedData(unfixedData, emergencySaveContent);
 
-  for (timestamp in fileData.words) {
+  for (timestamp in fileData.words) 
+  {
+    //ignore this cell if it falls outside the limited range we want to load
+    if(parseInt(timestamp) < startingRange || parseInt(timestamp)>endingRange)
+    {
+      continue;
+    }
     cell = transcript().getCell(timestamp) ? transcript().getCell(timestamp) : transcript().createCell(timestamp, "");
     cell.setWords(fileData.words[timestamp].replace("<i>", "").replace("</i>", ""));
     cell.setItalics(fileData.words[timestamp].indexOf("</i>") != -1);
@@ -712,7 +693,6 @@ populateData = function(e, id, startingRange, endingRange) {
   loadSpeakerIDs();
 
   //setTimeout(checkadjacentwords, 5000);
-
 }
 
 checkadjacentwords = function() {
@@ -759,7 +739,24 @@ shiftleft = function() {
     prevCell.setWords(cell.words);
   }
   scope().$apply();
+}
 
+offsetFile = function(id, offsetTime)
+{
+  offset = {edited:{words:{}, paragraphs:[]}};
+  original = JSON.parse(localStorage.getItem(id));
+  for(timestamp in original.edited.words)
+  {
+    offset.edited.words[parseInt(timestamp) + offsetTime] = original.edited.words[timestamp];
+  }
+  for(timestamp of original.edited.paragraphs)
+  {
+    offset.edited.paragraphs.push(parseInt(timestamp)+offsetTime);
+  }
+  key = id + " " + offsetTime;
+  localStorage.setItem(key, JSON.stringify(offset));
+  console.log(offset);
+  console.log(key);
 }
 
 
