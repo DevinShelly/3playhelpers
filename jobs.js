@@ -397,15 +397,16 @@ $("body").keydown(function(e) {
 });
 
 
-characterSet = JSON.parse("[32, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 45, 34, 39, 44, 46, 45, 58, 91, 93, 40, 41, 193, 225, 201, 233, 205, 237, 211, 243, 218, 250]");
+characterSet = [32, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 45, 34, 47, 39, 44, 46, 45, 58, 91, 93, 35, 33, 64, 40, 41, 36, 37, 38, 193, 225, 201, 233, 205, 237, 211, 243, 218, 250];
 /* Have to convert the characterSet to charCodes for encoding reasons(?) using the following
 
-  characters = " ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890-\"',.-:[]()ÁáÉéÍíÓóÚú";
+  characters = " ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890-\"/',.-:[]#!@()$%&ÁáÉéÍíÓóÚú";
   characterSet = [];
   for (character of characters)
   {
     characterSet.push(character.charCodeAt(0));
   }
+  console.log("characterSet = " + JSON.stringify(characterSet));
 */
 
 pasteWord = function(word) {
