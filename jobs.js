@@ -212,10 +212,10 @@ setMacro = function(word, isSpeaker, index) {
 save_and_load_macros = function(e) {
   f12 = 123;
   f11 = 122;
-  index = e.which - 97;
+  index = e.which - 49;
+  console.log(index);
   var macroWords;
   if (e.which != f11 && e.which != f12) {
-    index = e.which - 97;
     if (index < 0) {
       index = 9;
     }
