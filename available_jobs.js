@@ -598,4 +598,6 @@ click_refresh = function()
    //console.log("Clicking refresh");
   $(".icon-refresh").eq(0).parent().click();
 }
+
+create_button();
   
