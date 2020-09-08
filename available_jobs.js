@@ -301,9 +301,9 @@ create_autoclaim = function()
     $("#autoclaim_filters").append(`<div class="accordion-group accordion-heading clearfix autoclaim_row autoclaim_header">
     <label>Delay (mins): <input type="text" name = "delay" value = "0" style = "width:40px;" onchange = "delay_changed()" id = "autoclaim_delay"></input></label>
     <label>Timeout (mins): <input type="text" name = "timeout" value = "40" style = "width:40px;" onchange = "timeout_changed()" id = "autoclaim_timeout"></input></label>
-    <input type="button" value="+" name="add_autoclaim_filter" style="margin-left:10px" onclick="create_autoclaim_row()" />
-    <input type="button" value="Save" name="save_autoclaim" style="margin-left:10px" onclick="save_autoclaim()" />
-    <input type="button" value="Reset" name="reset_autoclaim" style="margin-left:10px" onclick="reset_autoclaim()"/>`);
+    <input type="button" class ="btn" value="+" name="add_autoclaim_filter" style="margin-left:10px" onclick="create_autoclaim_row()" />
+    <input type="button" class ="btn" value="Save" name="save_autoclaim" style="margin-left:10px" onclick="save_autoclaim()" />
+    <input type="button" class ="btn" value="Reset" name="reset_autoclaim" style="margin-left:10px" onclick="reset_autoclaim()"/>`);
     reset_autoclaim();
   }
 }
@@ -429,7 +429,7 @@ timeout_changed = function()
 
 create_button = function()
 {
-  //console.log("Creating buttons");
+  console.log("Creating buttons");
   if ($(".auto-refresh").length == 0)
   {
       //console.log("Creating buttons: " + disable_autoclaim_id);
@@ -599,5 +599,9 @@ click_refresh = function()
   $(".icon-refresh").eq(0).parent().click();
 }
 
-create_button();
+if(window.location.pathname == "/available_jobs")
+{
+  create_button();
+}
+
   
