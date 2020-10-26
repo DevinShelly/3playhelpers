@@ -87,11 +87,10 @@ transcript = function() {
 }
 
 //This function fires on startup
-always4 = null;
+always8 = null;
 previousSpeed = 2.0;
 
 onStartup = function() {
-  console.log("Starting up");
   if ($(".modal-footer button").click().length == 0) {
     setTimeout(onStartup, 100);
     return;
@@ -107,7 +106,7 @@ onStartup = function() {
     scope().$apply();
     angular.element($(".active-cell").eq(6)).scope().paragraph.transcript.makeNewParagraph(angular.element($(".active-cell").eq(6)).scope().cell);
     angular.element($("videogular")).scope().ctrl.tpVideoService.playerApi.play();
-    always4 = setInterval(function() {
+    always8 = setInterval(function() {
       setSpeedTo(8.0)
     }, 100);
     $(".fa-check").parent().click();
@@ -131,37 +130,42 @@ offsetDate = function() {
 }
 
 //Speed functions
-updateDisplay = function(speed) {
+speed = function(){
+  speed_dom = $("*[ng-model='ctrl.userSetting.video_playback_rate']");
+  speed_dom.attr("max", 8);
+  return speed_dom;
+}
+
+updateDisplay = function() {
   working_time = parseInt(Cookies.get('working_time'));
   hours = Math.floor(working_time / 1000 / 3600);
   minutes = Math.floor((working_time - hours * 1000 * 3600) / 60 / 1000);
   seconds = Math.floor((working_time - hours * 1000 * 3600 - minutes * 1000 * 60) / 1000);
-  while ($("#speed-display").length === 0) {
+  if ($("#speed-display").length === 0) {
     $($("#duplicate_data")).after("<div class = 'btn-group' id = 'speed-display'></div>")
+    setTimeout(updateDisplay, 100);
   }
-  $("#speed-display").text("Speed: " + speed + " | Time clocked: " + hours + "h, " + minutes + "m"); //, " + seconds + "s");
+  $("#speed-display").text("Speed: " + speed().val() + " | Time clocked: " + hours + "h, " + minutes + "m"); //, " + seconds + "s");
+  console.log("updating display");
 }
 
-setSpeedTo = function(speed) {
-  changeSpeed(speed - $("*[ng-model='ctrl.userSetting.video_playback_rate']").val());;
+setSpeedTo = function(newSpeed) 
+{
+  changeSpeed(newSpeed - parseFloat(speed().val()));
 }
 
-changeSpeed = function(changeBy, updateCookie) {
-  //     <input type="range" ng-model="ctrl.userSetting.video_playback_rate" min="0.5" max="2" step="0.1" class="ng-valid ng-not-empty ng-dirty ng-valid-parse ng-touched">
-  speed = $("*[ng-model='ctrl.userSetting.video_playback_rate']");
-  speed.attr("max", 8);
-  speed.val(parseFloat(speed.val()) + changeBy);
-  angular.element(speed).triggerHandler("input");
-  updateDisplay(speed.val());
+changeSpeed = function(changeBy)
+{
+  speed().val(parseFloat(speed().val()) + changeBy);
+  angular.element(speed()).triggerHandler("input");
+  console.log(speed().val());
+  console.log(changeBy);
+  updateDisplay();
 }
-
-
-
-
 
 toggleSpeed = function() {
-  speed = $("*[ng-model='ctrl.userSetting.video_playback_rate']");
-  currentSpeed = parseFloat(speed.val());
+  
+  currentSpeed = parseFloat(speed().val());
   if (currentSpeed != 1.0) {
     changeSpeed(1.0 - currentSpeed);
     previousSpeed = currentSpeed;
@@ -195,7 +199,7 @@ updateTimeWorked = function() {
       expires: 1
     });
   }
-  //changeSpeed(0.0);
+  updateDisplay();
 }
 
 setMacro = function(word, isSpeaker, index) {
@@ -220,22 +224,33 @@ save_and_load_macros = function(e) {
       index = 9;
     }
   }
-
+  
   macroWord = $(".user-selected").text().trim();
+  console.log(macroWord);
   if (macroWord.split("||").length == 2) {
     key = macroWord.split("||")[0];
     value = macroWord.split("||")[1];
     localStorage.setItem(key.toLowerCase(), value);
     macroWord = key;
   }
-
+  
   if (localStorage.getItem(macroWord.toLowerCase())) {
     key = macroWord;
     macroWord = localStorage.getItem(macroWord.toLowerCase());
-  } else if (parseInt(macroWord)) {
-    console.log("parsed Int");
-    macroWord = parseInt(macroWord).toLocaleString();
   }
+  else if (parseInt(macroWord)) 
+  {
+    macroWord = parseInt(macroWord).toLocaleString();
+    if (macroWord.length == 2)
+    {
+      macroWord = "'" + macroWord;
+    }
+  }
+  else if (macroWord[0] == "'" && parseInt(macroWord.substr(1)) && macroWord.length == 3)
+  {
+    macroWord = macroWord.substr(1);
+  }
+  
 
   scope().cell.setWords(macroWord);
   scope().$apply();
@@ -256,7 +271,7 @@ save_and_load_macros = function(e) {
 previousSpace = Date.now();
 initialToggle = false;
 
-macroTriggered = function(e) {
+clearSpeakerID = function() {
   if (scope().cell.speakerLabel) {
     scope().cell.setWords("");
     scope().$apply();
@@ -265,6 +280,26 @@ macroTriggered = function(e) {
 
 followid = null;
 $("body").attr("tabindex", -1);
+
+//Block new window/tab from opening
+$("body").keydown(function(e){
+  console.log("keydown t/n");
+  console.log(e.which);
+  if (e.ctrlKey && (e.which == 78 || e.which == 84))
+  {
+    e.stopPropagation();
+    e.preventDefault();
+    console.log("attempting to block new window/tab");
+  }
+});
+
+//Prevent accidentally changing playback speed
+$("body").keydown(function(e){
+  if(e.ctrlKey && (e.which == 187 || e.which == 189))
+  {
+    e.stopPropagation();
+  }
+});
 
 //Block Ctrl-J from clearing the cell 
 $("body").keydown(function(e) {
@@ -298,7 +333,15 @@ $("body").keydown(function(e) {
 
 $("body").keydown(function(e) {
   if (e.ctrlKey && !e.shiftKey && ((e.which >= 48 && e.which <= 57) || (e.which >= 96 && e.which <= 105))) {
-    macroTriggered(e);
+    clearSpeakerID();
+  }
+});
+
+$("body").keydown(function(e) {
+  if(e.altKey && e.which == 68)
+  {
+    clearSpeakerID();
+    console.log("clearing ID");
   }
 });
 
@@ -320,7 +363,7 @@ $("body").keydown(function(e) {
   if (e.shiftKey && e.which == 32) {
     if (Date.now() - previousSpace < 500) {
       toggleSpeed();
-      clearInterval(always4);
+      clearInterval(always8);
     }
     previousSpace = Date.now(0);
   }
@@ -395,6 +438,26 @@ $("body").keydown(function(e) {
     e.stopPropagation();
   }
 });
+/// TODO: Add ability to long press to ignore all spelling errors
+// spellcheckTimestamp = null;
+// clickstart = null;
+// $("span").mousedown(function(e) {
+//   if (this.classList.contains("spellcheck-misspelled"))
+//   {
+//     clickstart = Date.now();
+//     spellcheckTimestamp = this.getAttribute("timestamp");
+//   }
+//   console.log(this.classList);
+// });
+
+// $("span").click(function(e) {
+//   if(Date.now() - clickstart>100 && Date.now() - clickstart<1000 && this.getAttribute("timestamp") == spellcheckTimestamp)
+//   {
+//     $(".spellcheck-ignore").eq(1).click();
+//     console.log("clicking");
+//   }
+//   console.log("click");
+// });
 
 
 characterSet = [32, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 45, 34, 47, 39, 44, 46, 45, 58, 91, 93, 35, 33, 64, 40, 41, 36, 37, 38, 193, 225, 201, 233, 205, 237, 211, 243, 218, 250];
@@ -419,10 +482,17 @@ pasteWord = function(word) {
   scope().$apply();
 };
 
+lastGoogleTap = null;
 $("body").keydown(function(e) { //Automatically copies the current cell contents into the Google search box and opens a search
-  if (e.ctrlKey && e.which == 71) {
-    $("#google").val($(".user-selected").text().trim());
-    $("#google").parent().submit();
+  console.log(Date.now() - lastGoogleTap);
+  if (e.ctrlKey && e.which == 71)
+  {
+    if (Date.now() - lastGoogleTap < 2000)
+    {
+      $("#google").val($(".user-selected").text().trim());
+      $("#google").parent().submit();
+    }
+    lastGoogleTap = Date.now();
   }
 });
 
