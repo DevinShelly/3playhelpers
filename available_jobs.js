@@ -11,17 +11,16 @@ disable_autoclaim_id = null;
 
 observe_market_container = function(mutationsList, observer) 
 {
-  ////console.log(1);
   for(let mutation of mutationsList) 
   {
-    
     if (mutation.type === 'childList') 
     {
       for(node of mutation.addedNodes)
       {
         //The table has refreshed, so start the autotimer again if necessary
-        if($(node).find("#jobs_table").length>0)
+        if($(node).find("#jobs_table").length>0 || node.id == "empty_single")
         {
+          display_percentages();
           if(autorefresh_id)
           {
             clearTimeout(autorefresh_id);
@@ -39,12 +38,23 @@ observe_market_container = function(mutationsList, observer)
         {
           file_was_claimed(node.parentNode.parentNode);
         }
-        console.log(node.textContent)
         
       }
     }
   }
 };
+
+display_percentages = function()
+{
+  $(".greenColorBgReal").each(function()
+  {
+    price = parseFloat($(this).parent().prev().text().replace("$", ""));
+    bonus = parseFloat($(this).text().replace("$", ""));
+    percentage = (bonus/price*100).toFixed(0) + "%";
+    $(this).text(this.textContent + " (" + percentage + ")");
+    $(this).parent().next().css("text-align", "center");
+  });
+}
 
 market_container = document.getElementById('market-container');
 config = { attributes: false, childList: true, subtree: true };
@@ -252,17 +262,20 @@ name_duration_pair = function(row)
 
 file_was_claimed = function(row) 
 {
-  console.log(row);
-  previously_claimed_files = JSON.parse(localStorage.getItem("previously_claimed_files"));
+  previously_claimed_files = JSON.parse(localStorage.getItem("previously_claimed_files")) || [];
   previously_claimed_files.push(name_duration_pair(row));
   localStorage.setItem("previously_claimed_files", JSON.stringify(previously_claimed_files));
+  console.log(filters);
   
-  for (var filter of filters)
+  for (var f in filters)
   {
+    filter = filters[f];
     if(filter.should_claim_row(row))
     {
       console.log("Filter claimed file:" + row.textContent + " " + JSON.stringify(filter.params));
       filter.reduce_time_left(row);
+      console.log(filter);
+      $(".autoclaim_row").not(".autoclaim_header").find("input").eq(6+8*f).val(parseInt(filter.params[minutes_left_to_claim]));
       return;
     }
   }
@@ -276,7 +289,7 @@ parse_row = function()
     {
       $(this).find(".btn").click();
       $(this).find(".btn").removeAttr("href"); //Disables the button so it can't be claimed multiple times
-      row_observer.observe(this, config);
+      market_observer.observe(this, config);
       console.log("Claiming:" + $(this).text());
       console.log(filter.params);
       return;
@@ -338,9 +351,8 @@ save_autoclaim = function()
 {
   ////console.log(9);
   var params = [];
-  for (var f in filters)
+  for (var filter of filters)
   {
-    var filter = filters[f];
     params.push(filter.params);
   }
   Cookies.set("autoclaim", params, {expires: 365});
@@ -349,40 +361,39 @@ save_autoclaim = function()
 reset_autoclaim = function()
 {
   ////console.log(10);
-  update_filters(Cookies.getJSON("autoclaim"));
+  filters = Cookies.getJSON("autoclaim").map(function(p) {return new AutoClaimFilter(p)});
+  update_filters();
 }
 
 filters_changed = function()
 {
   ////console.log(11);
-  params = [];
+  filters =[]
   $(".autoclaim_row").not(".autoclaim_header").each(function(index){
     inputs = $(this).find("input");
-    param = {projects:inputs[0].value.split("|"), max_base_rate:inputs[1].value, min_bonus_rate:inputs[2].value, min_duration_in_mins:inputs[3].value, 
+    params = {projects:inputs[0].value.split("|"), max_base_rate:inputs[1].value, min_bonus_rate:inputs[2].value, min_duration_in_mins:inputs[3].value, 
     min_deadline_in_mins:inputs[4].value, min_bonus_ratio:inputs[5].value, minutes_left_to_claim:inputs[6].value};
-    params.push(param);
+    filters.push(new AutoClaimFilter(params));
   });
   update_filters(params);
 }
 
-update_filters = function(params)
+update_filters = function()
 {
   ////console.log(12);
-  filters = [];
   $(".autoclaim_row").not(".autoclaim_header").remove();
-  for(var p in params)
+  for(var filter of filters)
   {
-    filters.push(new AutoClaimFilter(params[p]));
     create_autoclaim_row();
     row = $(".autoclaim_row").not(".autoclaim_header").last()[0];
     inputs = $(row).find("input");
-    inputs[0].value = params[p][projects].join("|");
-    inputs[1].value = params[p][max_base_rate];
-    inputs[2].value = params[p][min_bonus_rate];
-    inputs[3].value = params[p][min_duration_in_mins];
-    inputs[4].value = params[p][min_deadline_in_mins];
-    inputs[5].value = params[p][min_bonus_ratio];
-    inputs[6].value = params[p][minutes_left_to_claim];
+    inputs[0].value = filter.params[projects].join("|");
+    inputs[1].value = filter.params[max_base_rate];
+    inputs[2].value = filter.params[min_bonus_rate];
+    inputs[3].value = filter.params[min_duration_in_mins];
+    inputs[4].value = filter.params[min_deadline_in_mins];
+    inputs[5].value = filter.params[min_bonus_ratio];
+    inputs[6].value = filter.params[minutes_left_to_claim];
   }
 }
 
@@ -429,14 +440,13 @@ timeout_changed = function()
 
 create_button = function()
 {
-  console.log("Creating buttons");
   if ($(".auto-refresh").length == 0)
   {
       //console.log("Creating buttons: " + disable_autoclaim_id);
       autorefresh_button = "<a class = 'btn btn-icon auto-refresh'></a>";
       autoclaim_button = "<a class = 'btn btn-icon auto-claim'></a>"
-      $("#main_container .btn-icon").parent().append(autorefresh_button);
-      $("#main_container .btn-icon").parent().append(autoclaim_button);
+      $(".icon-refresh").parent().parent().append(autorefresh_button);
+      $(".icon-refresh").parent().parent().append(autoclaim_button);
       autorefresh_id != null ? enable_autorefresh() : disable_autorefresh();
       disable_autoclaim_id != null ? enable_autoclaim() : disable_autoclaim();
   }
@@ -602,6 +612,9 @@ click_refresh = function()
 if(window.location.pathname == "/available_jobs")
 {
   create_button();
+  display_percentages();
 }
+
+
 
   
