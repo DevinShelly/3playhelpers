@@ -14,6 +14,7 @@
       return window.Cookies = o, t
     }
   }
+  
 }(function() {
   function e() {
     for (var e = 0, n = {}; e < arguments.length; e++) {
@@ -146,7 +147,6 @@ updateDisplay = function() {
     setTimeout(updateDisplay, 100);
   }
   $("#speed-display").text("Speed: " + speed().val() + " | Time clocked: " + hours + "h, " + minutes + "m"); //, " + seconds + "s");
-  console.log("updating display");
 }
 
 setSpeedTo = function(newSpeed) 
@@ -158,8 +158,6 @@ changeSpeed = function(changeBy)
 {
   speed().val(parseFloat(speed().val()) + changeBy);
   angular.element(speed()).triggerHandler("input");
-  console.log(speed().val());
-  console.log(changeBy);
   updateDisplay();
 }
 
@@ -216,7 +214,7 @@ setMacro = function(word, isSpeaker, index) {
 save_and_load_macros = function(e) {
   f12 = 123;
   f11 = 122;
-  index = e.which - 49;
+  index = e.which > 57 ? e.which - 97: e.which - 49;
   console.log(index);
   var macroWords;
   if (e.which != f11 && e.which != f12) {
@@ -282,9 +280,8 @@ followid = null;
 $("body").attr("tabindex", -1);
 
 //Block new window/tab from opening
-$("body").keydown(function(e){
-  console.log("keydown t/n");
-  console.log(e.which);
+$("body").keydown(function(e)
+{
   if (e.ctrlKey && (e.which == 78 || e.which == 84))
   {
     e.stopPropagation();
@@ -326,7 +323,7 @@ $("body").keydown(function(e) {
 });
 
 $("body").keydown(function(e) {
-  if ((e.ctrlKey && e.shiftKey && (e.which >= 49 && e.which <= 57) || (e.which >= 96 && e.which <= 105)) || e.which == 123 || e.which == 122) {
+  if ((e.ctrlKey && e.shiftKey && (e.which >= 48 && e.which <= 57) || (e.which >= 96 && e.which <= 105)) || e.which == 123 || e.which == 122) {
     save_and_load_macros(e);
   }
 });
@@ -484,7 +481,6 @@ pasteWord = function(word) {
 
 lastGoogleTap = null;
 $("body").keydown(function(e) { //Automatically copies the current cell contents into the Google search box and opens a search
-  console.log(Date.now() - lastGoogleTap);
   if (e.ctrlKey && e.which == 71)
   {
     if (Date.now() - lastGoogleTap < 2000)
@@ -657,7 +653,7 @@ loadFileSelector = function() {
   $("#duplicate_data").change(populateData);
   if(fileToLoad)
   {
-    $("#duplicate_data").val(fileToLoad);
+    //$("#duplicate_data").val(fileToLoad);
   }
 }
 
