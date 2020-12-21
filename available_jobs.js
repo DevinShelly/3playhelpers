@@ -128,7 +128,7 @@ class AutoClaimFilter {
   
   deadline_passes(deadline)
   {
-    
+    console.log(deadline);
     var passes = deadline >= ((new Date()).getTime() + parseInt(this.params[min_deadline_in_mins]) * 60 * 1000);
     if (!passes)
     {
@@ -221,7 +221,7 @@ class AutoClaimFilter {
     
     var base_passes = this.base_passes(rate);
     var bonus_passes = this.bonus_passes(bonus);
-    var deadline_passes = true;//this.deadline_passes(deadline);
+    var deadline_passes = this.deadline_passes(deadline);
     var bonus_ratio_passes = this.bonus_ratio_passes(bonus/rate); //bonus / rate >= parseFloat(this.params[min_bonus_ratio]);
     var time_left_passes = this.time_left_passes(duration); //parseInt(this.params[minutes_left_to_claim]) > duration;
     var duration_passes = this.duration_passes(duration); //parseInt(this.params[min_duration_in_mins]) <= duration;
