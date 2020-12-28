@@ -103,7 +103,7 @@ onStartup = function() {
       words = "RETURN RETURN RETURN RETURN RETURN RETURN RETURN";
 
     }
-    scope().cell.setWords(words);
+    setWords(scope().cell, words);
     scope().$apply();
     angular.element($(".active-cell").eq(6)).scope().paragraph.transcript.makeNewParagraph(angular.element($(".active-cell").eq(6)).scope().cell);
     angular.element($("videogular")).scope().ctrl.tpVideoService.playerApi.play();
@@ -211,6 +211,17 @@ setMacro = function(word, isSpeaker, index) {
   }
 }
 
+setWords = function(cell, word)
+{
+  cell.setWords("");
+  previousLetter = "";
+  for (letter of word)
+  {
+    cell.setWords(cell.words + previousLetter + letter);
+    previousLetter = letter == " " ? " " : "";
+  }
+}
+
 save_and_load_macros = function(e) {
   f12 = 123;
   f11 = 122;
@@ -249,8 +260,7 @@ save_and_load_macros = function(e) {
     macroWord = macroWord.substr(1);
   }
   
-
-  scope().cell.setWords(macroWord);
+  setWords(scope().cell, macroWord);
   scope().$apply();
 
 
@@ -271,7 +281,7 @@ initialToggle = false;
 
 clearSpeakerID = function() {
   if (scope().cell.speakerLabel) {
-    scope().cell.setWords("");
+    setWords(scope().cell, "");
     scope().$apply();
   }
 }
@@ -323,7 +333,8 @@ $("body").keydown(function(e) {
 });
 
 $("body").keydown(function(e) {
-  if ((e.ctrlKey && e.shiftKey && (e.which >= 48 && e.which <= 57) || (e.which >= 96 && e.which <= 105)) || e.which == 123 || e.which == 122) {
+  if (e.ctrlKey && e.shiftKey && ((e.which >= 48 && e.which <= 57) || (e.which >= 96 && e.which <= 105)) || e.which == 123 || e.which == 122) 
+  {
     save_and_load_macros(e);
   }
 });
@@ -390,10 +401,10 @@ $("body").keydown(function(e) {
   if (e.ctrlKey && e.which == 68 && !e.shiftKey) {
     words = scope().cell.words;
     if (words.startsWith("--")) {
-      scope().cell.setWords(words.substr(2));
+      setWords(scope().cell, words.substr(2));
       scope().$apply();
     } else if (!words.endsWith("--")) {
-      scope().cell.setWords("--" + words.toLowerCase());
+      setWords(scope().cell, "--" + words.toLowerCase())
       scope().$apply();
       e.stopPropagation();
     }
@@ -410,7 +421,7 @@ $("body").keydown(function(e) {
     }
     spelledWord = spelledWord.split("---").join("");
     spelledWord = spelledWord.substr(0, spelledWord.length - 1).toUpperCase();
-    scope().cell.setWords(spelledWord);
+    setWords(scope().cell, spelledWord);
     scope().$apply();
     e.stopPropagation();
   }
@@ -475,7 +486,7 @@ pasteWord = function(word) {
       return;
     }
   }
-  scope().cell.setWords(word);
+  setWords(scope().cell, word);
   scope().$apply();
 };
 
@@ -495,7 +506,7 @@ $("body").keydown(function(e) { //Automatically copies the current cell contents
 removeHyphen = function(e) {
   words = scope().cell.words;
   if (words.replace("-", "") != words && words[words.length - 1] != "-") {
-    scope().cell.setWords(words.replace("-", ""));
+    setWords(scope().cell, words.replace("-", ""));
     scope().$apply();
     e.stopPropagation();
     e.preventDefault();
@@ -504,7 +515,7 @@ removeHyphen = function(e) {
 
 splitHyphen = function() {
   if (scope().cell.words.replace("-", "") != scope().cell.words) {
-    scope().cell.setWords(scope().cell.words.replace("-", " "));
+    setWords(scope().cell, scope().cell.words.replace("-", " "));
     scope().$apply();
   }
 }
@@ -756,7 +767,7 @@ populateData = function(e, id, startingRange=0, endingRange=1000*60*60*24)
       continue;
     }
     cell = transcript().getCell(timestamp) ? transcript().getCell(timestamp) : transcript().createCell(timestamp, "");
-    cell.setWords(fileData.words[timestamp].replace("<i>", "").replace("</i>", ""));
+    setWords(cell, fileData.words[timestamp].replace("<i>", "").replace("</i>", ""));
     cell.setItalics(fileData.words[timestamp].indexOf("</i>") != -1);
     scope().$apply();
 
@@ -785,8 +796,8 @@ checkadjacentwords = function() {
       //dirtycell.setWords("");
     }
     if (nextdirtycell.originalData.words == dirtycell.words) {
-      nextdirtycell.setWords(dirtycell.words);
-      dirtycell.setWords("");
+      setWords(nextdirtycell, dirtycell.words);
+      setWords(dirtycell, "");
       i = i + 1;
     }
   }
@@ -800,7 +811,7 @@ shiftright = function() {
     cell = transcript().getCell($(span).attr("timestamp"));
     nextSpan = spans[i + 1];
     nextCell = transcript().getCell($(nextSpan).attr("timestamp"));
-    nextCell.setWords(cell.words);
+    setWords(nextCell, cell.words);
   }
   scope().$apply();
 }
@@ -813,7 +824,7 @@ shiftleft = function() {
     cell = transcript().getCell($(span).attr("timestamp"));
     prevSpan = spans[i + 1];
     prevCell = transcript().getCell($(prevSpan).attr("timestamp"));
-    prevCell.setWords(cell.words);
+    setWords(prevCell, cell.words);
   }
   scope().$apply();
 }
