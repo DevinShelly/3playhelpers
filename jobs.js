@@ -88,13 +88,25 @@ transcript = function() {
 }
 
 //This function fires on startup
-always8 = null;
 previousSpeed = 2.0;
 
 onStartup = function() {
   if ($(".modal-footer button").click().length == 0) {
     setTimeout(onStartup, 100);
     return;
+  }
+  
+  if(parseRate() < 0.31)
+  {
+    previousSpeed = 8.0;
+  }
+  else if(parseRate() < 0.5)
+  {
+    previousSpeed = 3.0;
+  }
+  else if(parseRate() < 0.6)
+  {
+    previousSpeed = 2.5;
   }
 
   if (angular.element($(".active-cell")).scope().cell.words == "[NO SPEECH]") {
@@ -107,13 +119,13 @@ onStartup = function() {
     scope().$apply();
     angular.element($(".active-cell").eq(6)).scope().paragraph.transcript.makeNewParagraph(angular.element($(".active-cell").eq(6)).scope().cell);
     angular.element($("videogular")).scope().ctrl.tpVideoService.playerApi.play();
-    always8 = setInterval(function() {
-      setSpeedTo(8.0)
-    }, 100);
     $(".fa-check").parent().click();
   } else {
     $("#finish-dropdown li").not(":eq(1)").remove();
   }
+  
+  
+  
 }
 
 onStartup();
@@ -213,6 +225,10 @@ setMacro = function(word, isSpeaker, index) {
 
 setWords = function(cell, word)
 {
+  if(cell.words == word)
+  {
+    return;
+  }
   cell.setWords("");
   previousLetter = "";
   for (letter of word)
@@ -371,7 +387,6 @@ $("body").keydown(function(e) {
   if (e.shiftKey && e.which == 32) {
     if (Date.now() - previousSpace < 500) {
       toggleSpeed();
-      clearInterval(always8);
     }
     previousSpace = Date.now(0);
   }
@@ -539,11 +554,21 @@ parseDuration = function() {
 }
 
 parseName = function() {
-  return $(".tab-pane:eq(6) td.ng-binding:eq(3)").text()
+  return $(".tab-pane:eq(6) td.ng-binding:eq(3)").text();
 }
 
 parseID = function() {
   return $(".tab-pane:eq(6) td.ng-binding:eq(1)").text();
+}
+
+parsePrice = function() {
+  return parseFloat($(".tab-pane:eq(6) td.ng-binding:eq(15)").text().replace("$", ""));
+}
+
+parseRate = function() {
+  parts = parseDuration().split(":");
+  minutes = parseFloat(parts[0]*60) + parseFloat(parts[1]) + parseFloat(parts[2])/60;
+  return parsePrice()/minutes;
 }
 
 getFileData = function(id) {
