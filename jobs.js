@@ -108,6 +108,7 @@ onStartup = function() {
   {
     previousSpeed = 2.5;
   }
+  toggleSpeed();
 
   if (angular.element($(".active-cell")).scope().cell.words == "[NO SPEECH]") {
     words = "[MUSIC PLAYING]";
@@ -337,15 +338,6 @@ $("body").keydown(function(e) {
 $("body").keydown(function(e) {
   updateTimeWorked();
   clearInterval(followid);
-});
-
-//Initially toggle the speed
-$("body").keydown(function(e) {
-  if (!initialToggle) {
-    initialToggle = true;
-    toggleSpeed();
-    updateTimeWorked();
-  }
 });
 
 $("body").keydown(function(e) {
