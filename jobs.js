@@ -159,7 +159,10 @@ updateDisplay = function() {
     $($("#duplicate_data")).after("<div class = 'btn-group' id = 'speed-display'></div>")
     setTimeout(updateDisplay, 100);
   }
-  $("#speed-display").text("Speed: " + speed().val() + " | Time clocked: " + hours + "h, " + minutes + "m"); //, " + seconds + "s");
+  file_working_hours = getDurationData()[parseID()]["file_working_time"]/1000/3600;
+  pay_rate = parsePay()/file_working_hours;
+  console.log(pay_rate);
+  $("#speed-display").text("Speed: " + speed().val() + " | Time clocked: " + hours + "h, " + minutes + "m" + " | Pay rate: $" + pay_rate.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})); //, " + seconds + "s");
 }
 
 setSpeedTo = function(newSpeed) 
@@ -205,6 +208,7 @@ updateTimeWorked = function() {
   });
   elapsed_time = Math.max(0, now.getTime() - last_keypress);
   if (elapsed_time < 60000) {
+    updateFileWorkingTime(elapsed_time);
     working_time = working_time + elapsed_time;
     Cookies.set('working_time', working_time, {
       expires: 1
@@ -407,14 +411,19 @@ $("body").keydown(function(e) {
 $("body").keydown(function(e) {
   if (e.ctrlKey && e.which == 68 && !e.shiftKey) {
     words = scope().cell.words;
-    if (words.startsWith("--")) {
+    if (words.endsWith("--")) {
+      setWords(scope().cell, "--" + words.substr(0, words.length-2));
+      
+    } else if (words.startsWith("--")) {
       setWords(scope().cell, words.substr(2));
-      scope().$apply();
-    } else if (!words.endsWith("--")) {
-      setWords(scope().cell, "--" + words.toLowerCase())
-      scope().$apply();
-      e.stopPropagation();
     }
+    else
+    {
+      setWords(scope().cell, words + "--");
+    }
+    scope().$apply();
+    e.stopPropagation();
+    
   }
 });
 
@@ -545,6 +554,10 @@ parseDuration = function() {
   return $(".tab-pane:eq(6) td.ng-binding:eq(13)").text();
 }
 
+parsePay = function() {
+  return parseFloat($(".tab-pane:eq(6) td.ng-binding:eq(15)").text().substr(1));
+}
+
 parseName = function() {
   return $(".tab-pane:eq(6) td.ng-binding:eq(3)").text();
 }
@@ -596,13 +609,21 @@ deleteFiles = function(deleteNonPermanent) {
 }
 
 saveDurationData = function() {
-  console.log("Saving durationData");
-  durationData = JSON.parse(localStorage.getItem(parseDuration()));
-  durationData = durationData ? durationData : {};
+  durationData = getDurationData() || {};
+  console.log(durationData);
+  previousFileWorkingTime = durationData[parseID()] ? parseFloat(durationData[parseID()]["file_working_time"]) : 0;
   durationData[parseID()] = {
     "name": parseName(),
-    "expiration": Date.now() + 4 * 1000 * 60 * 60
+    "expiration": Date.now() + 4 * 1000 * 60 * 60,
+    "file_working_time": isNaN(previousFileWorkingTime) ? 0 : previousFileWorkingTime
   };
+  localStorage.setItem(parseDuration(), JSON.stringify(durationData));
+}
+
+updateFileWorkingTime = function(ellapsed_file_working_time) {
+  durationData = getDurationData();
+  previousFileWorkingTime = parseFloat(durationData[parseID()]["file_working_time"]);
+  durationData[parseID()]["file_working_time"] = previousFileWorkingTime + ellapsed_file_working_time;
   localStorage.setItem(parseDuration(), JSON.stringify(durationData));
 }
 
