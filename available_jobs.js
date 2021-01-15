@@ -77,7 +77,9 @@ parse_deadline = function (deadline)
     newHours = parseInt(hours) + 12;
     deadline = deadline.split(",")[0] + ", " + newHours.toString() + ":" + minutes;
   }
-  deadline = deadline.split(",")[0] + ", 2020 " + deadline.split(", ")[1];
+  deadline = deadline.split(",")[0] + ", 2021 " + deadline.split(", ")[1];
+  deadline = deadline.replace("  ", " ");
+  console.log("parsed deadline " + deadline);
   return  Date.parse(deadline);
 }
 
@@ -110,7 +112,7 @@ class AutoClaimFilter {
     var passes = rate <= parseFloat(this.params[max_base_rate]);
     if (!passes)
     {
-      ////console.log("base " + rate);
+      console.log("base " + rate);
     }
     return passes;
     
@@ -121,18 +123,19 @@ class AutoClaimFilter {
     var passes =  bonus >= parseFloat(this.params[min_bonus_rate]);
     if (!passes)
     {
-      ////console.log("bonus " + bonus);
+      console.log("bonus " + bonus);
     }
     return passes;
   }
   
   deadline_passes(deadline)
   {
-    console.log(deadline);
-    var passes = deadline >= ((new Date()).getTime() + parseInt(this.params[min_deadline_in_mins]) * 60 * 1000);
+    var minimumDeadline = (new Date()).getTime() + parseInt(this.params[min_deadline_in_mins]) * 60 * 1000;
+    var passes = deadline >= minimumDeadline;
     if (!passes)
     {
-      ////console.log("deadline " + deadline);
+      console.log("deadline " + deadline);
+      console.log("minimum deadline " + minimumDeadline);
     }
     return passes;
   }
@@ -142,7 +145,7 @@ class AutoClaimFilter {
     var passes = ratio >= parseFloat(this.params[min_bonus_ratio]);
     if (!passes)
     {
-      ////console.log("ratio " + ratio);
+      console.log("ratio " + ratio);
     }
     return passes;
   }
@@ -160,7 +163,8 @@ class AutoClaimFilter {
         return true;
       }
     }
-    ////console.log("in project " + in_project);
+    console.log("in project " + in_project);
+    console.log("project" + project);
     return false;
   }
   
@@ -171,7 +175,7 @@ class AutoClaimFilter {
       var not_project = not_in_project[i].substring(1);
       if (project.indexOf(not_project) != -1)
       {
-        ////console.log("not in project " + not_project);
+        console.log("not in project " + not_project);
         return true;
       }
     }
@@ -183,7 +187,7 @@ class AutoClaimFilter {
     var passes =  parseInt(this.params[minutes_left_to_claim]) > duration;
     if (!passes)
     {
-      ////console.log("time_left " + duration);
+      console.log("time_left " + duration);
     }
     return passes;
   }
@@ -193,7 +197,7 @@ class AutoClaimFilter {
     var passes =  parseInt(this.params[min_duration_in_mins]) <= duration;
     if (!passes)
     {
-      ////console.log("duration " + duration);
+      console.log("duration " + duration);
     }
     return passes;
   }
@@ -573,7 +577,7 @@ if (window.location.href === "https://jobs.3playmedia.com/pay_stubs")
   dec31 = (new Date("December 31, " + year + " 23:59:59"));
   year_elapsed = (new Date()-jan1)/(dec31-jan1);
   est_earnings = ytd_earnings/year_elapsed;
-  $("h1").after("<br><h5>Year to Date</h5><h1>$" + ytd_earnings.toLocaleString() + "</h1>" + "<br><h5>Estimated Full Year Earnings</h5><h1>$" +est_earnings.toLocaleString() + "</h1>"); 
+  $("h1").after("<br><h5>Year to Date</h5><h1>$" + ytd_earnings.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + "</h1>" + "<br><h5>Estimated Full Year Earnings</h5><h1>$" +est_earnings.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + "</h1>"); 
   
 }
 
