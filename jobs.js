@@ -89,6 +89,7 @@ transcript = function() {
 
 //This function fires on startup
 previousSpeed = 2.0;
+finished = 0;
 
 onStartup = function() {
   if ($(".modal-footer button").click().length == 0) {
@@ -99,12 +100,13 @@ onStartup = function() {
   if(parseRate() < 0.31)
   {
     previousSpeed = 8.0;
+    finished = 1.0;
   }
   else if(parseRate() < 0.5)
   {
     previousSpeed = 3.0;
   }
-  else if(parseRate() < 0.6)
+  else if(parseRate() < 0.65)
   {
     previousSpeed = 2.5;
   }
@@ -150,42 +152,70 @@ speed = function(){
   return speed_dom;
 }
 
+
 updateDisplay = function() {
   working_time = parseInt(Cookies.get('working_time'));
-  hours = Math.floor(working_time / 1000 / 3600);
-  minutes = Math.floor((working_time - hours * 1000 * 3600) / 60 / 1000);
-  seconds = Math.floor((working_time - hours * 1000 * 3600 - minutes * 1000 * 60) / 1000);
+  daily_hours = Math.floor(working_time / 1000 / 3600);
+  daily_minutes = Math.floor((working_time - daily_hours * 1000 * 3600) / 60 / 1000);
+  daily_seconds = Math.floor((working_time - daily_hours * 1000 * 3600 - daily_minutes * 1000 * 60) / 1000);
+  daily_text = "Daily clocked: " + daily_hours + "h, " + daily_minutes + "m";
   if ($("#speed-display").length === 0) {
     $($("#duplicate_data")).after("<div class = 'btn-group' id = 'speed-display'></div>")
     setTimeout(updateDisplay, 100);
   }
-  file_working_hours = getDurationData()[parseID()]["file_working_time"]/1000/3600;
-  pay_rate = parsePay()/file_working_hours;
-  console.log(pay_rate);
-  $("#speed-display").text("Speed: " + speed().val() + " | Time clocked: " + hours + "h, " + minutes + "m" + " | Pay rate: $" + pay_rate.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})); //, " + seconds + "s");
+  file_working_hours = getDurationData()[parseID()] ? getDurationData()[parseID()]["file_working_time"]/1000/3600 : 0;
+  file_hours = Math.floor(file_working_hours);
+  file_minutes = Math.floor(file_working_hours*60-file_hours*60);
+  file_seconds = Math.floor(file_working_hours*3600 -file_minutes*60 - file_hours*3600);
+  file_text = "File clocked: " + (file_hours ? file_hours + "h, " + file_minutes + "m" : file_minutes + "m, " + file_seconds + "s");
+  times = $(".tp-transcript-controls div span").eq(3).text();
+  current_time = times.split("/")[0].trim().split(":");
+  max_time = times.split("/")[1].trim().split(":");
+  current_seconds = parseFloat(current_time[0])*3600 + parseFloat(current_time[1])*60 + parseFloat(current_time[2]);
+  max_seconds = parseFloat(max_time[0])*3600 + parseFloat(max_time[1])*60 + parseFloat(max_time[2]);
+  percentage = finished || current_seconds/max_seconds;
+  pay_rate = parsePay()/file_working_hours*percentage;
+  pay_text = "Pay rate: $" + pay_rate.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  speed_text = "Speed: " + speed().val();
+  $("#speed-display").text(speed_text + " | " + daily_text + " | " + file_text + " | " + pay_text);
 }
 
-setSpeedTo = function(newSpeed) 
+setTimeout(function()
 {
-  changeSpeed(newSpeed - parseFloat(speed().val()));
-}
+  $(".fa-check").parent().click(function()
+  {
+    finished = 1.0;
+  });
+}, 5000);
 
-changeSpeed = function(changeBy)
+changeSpeed = function(changeBy, updatePrev = true)
 {
   speed().val(parseFloat(speed().val()) + changeBy);
   angular.element(speed()).triggerHandler("input");
+  if (updatePrev)
+  {
+    previousSpeed = parseFloat(speed().val());
+  }
   updateDisplay();
 }
 
 toggleSpeed = function() {
   
   currentSpeed = parseFloat(speed().val());
-  if (currentSpeed != 1.0) {
-    changeSpeed(1.0 - currentSpeed);
-    previousSpeed = currentSpeed;
-  } else {
-    changeSpeed(previousSpeed - currentSpeed);
+  if (currentSpeed != 1.0 && !(currentSpeed == 8.0 && previousSpeed != 8.0)) 
+  {
+    setSpeed(1.0, false);
+  } 
+  else 
+  {
+    setSpeed(previousSpeed);
   }
+}
+
+setSpeed = function(newSpeed, updatePrev = true)
+{
+  currentSpeed = parseFloat(speed().val());
+  changeSpeed(newSpeed - currentSpeed, updatePrev);
 }
 
 updateTimeWorked = function() {
@@ -310,6 +340,22 @@ clearSpeakerID = function() {
 followid = null;
 $("body").attr("tabindex", -1);
 
+$("body").keydown(function(e)
+{
+  if (e.ctrlKey && e.shiftKey && e.which == 221)
+  {
+    setSpeed(8.0, false);
+  }
+});
+
+$("body").keydown(function(e)
+{
+  if (e.ctrlKey && e.shiftKey && e.which == 219)
+  {
+    setSpeed(previousSpeed);
+  }
+});
+
 //Block new window/tab from opening
 $("body").keydown(function(e)
 {
@@ -366,15 +412,15 @@ $("body").keydown(function(e) {
 });
 
 $("body").keydown(function(e) {
-  if (e.ctrlKey && e.which == 219) {
-    changeSpeed(-0.1, true);
+  if (e.ctrlKey && !e.shiftKey && e.which == 219) {
+    changeSpeed(-0.1);
     e.preventDefault();
   }
 });
 
 $("body").keydown(function(e) {
-  if (e.ctrlKey && e.which == 221) {
-    changeSpeed(0.1, true);
+  if (e.ctrlKey && ! e.shiftKey && e.which == 221) {
+    changeSpeed(0.1);
     e.preventDefault();
   }
 });
@@ -412,7 +458,7 @@ $("body").keydown(function(e) {
   if (e.ctrlKey && e.which == 68 && !e.shiftKey) {
     words = scope().cell.words;
     if (words.endsWith("--")) {
-      setWords(scope().cell, "--" + words.substr(0, words.length-2));
+      setWords(scope().cell, "--" + words.substr(0, words.length-2).toLowerCase());
       
     } else if (words.startsWith("--")) {
       setWords(scope().cell, words.substr(2));
@@ -622,7 +668,7 @@ saveDurationData = function() {
 
 updateFileWorkingTime = function(ellapsed_file_working_time) {
   durationData = getDurationData();
-  previousFileWorkingTime = parseFloat(durationData[parseID()]["file_working_time"]);
+  previousFileWorkingTime = durationData[parseID()] ? parseFloat(durationData[parseID()]["file_working_time"]) : 0;
   durationData[parseID()]["file_working_time"] = previousFileWorkingTime + ellapsed_file_working_time;
   localStorage.setItem(parseDuration(), JSON.stringify(durationData));
 }
