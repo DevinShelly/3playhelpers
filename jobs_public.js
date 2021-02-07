@@ -209,6 +209,17 @@ updateFileWorkingTime = function(ellapsed_time)
   localStorage.setItem("files_data",  JSON.stringify(files_data));
 }
 
+setMacro = function(word, isSpeaker, index) {
+  macroWords = $("[ng-model='macroData.words']");
+  macroSpeakers = $("[ng-click='ctrl.toggleMacroSpeakerLabel(macroData.id)']");
+  macroWords[index].value = word;
+  $(macroWords[index]).trigger("input");
+  speakerChecked = macroSpeakers[index].value == "true";
+  if (speakerChecked != isSpeaker) {
+    $(macroSpeakers[index]).click();
+  }
+}
+
 numberTriggered = function()
 {
   single_digit_numbers = {"0":"zero", "1":"one", "2": "two", "3": "three", "4":"four", "5":"five", "6":"six", "7":"seven", "8":"eight", "9":"nine", 
@@ -289,6 +300,17 @@ macroTriggered = function(e)
   
   scope().cell.setWords(word);
   scope().$apply();
+  
+  if (e.which >= 122) 
+  {
+    return;
+  }
+
+  isSpeaker = word[word.length - 1] == ":";
+  setMacro(word, isSpeaker, index);
+
+  e.preventDefault();
+  e.stopPropagation();
 }
 
 previousSpace = Date.now();
