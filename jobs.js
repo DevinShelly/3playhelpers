@@ -1,7 +1,8 @@
 keypress_timeout = 1; //this is how long in minutes between keypresses/mouse movement before it stops counting you as working
 midnight_offset = 6; //this is when a new day starts for record keeping purposesin hours. 0 is midnight, 1 is 1 AM, -1 is 11 PM, etc
 previousSpeed = 1.0; //this sets the default speed you start a file at when you open it
-
+context_sensitive_macro_keys = [123, 192]; //these are the keycodes for backtick (`) and F12. These trigger a context sensitive macro  
+                                           //for a different key, go to keycode.io, hit it, and then add it to the array
 // Read
 /**
  * Minified by jsDelivr using UglifyJS v3.1.10.
@@ -245,21 +246,24 @@ numberTriggered = function()
   {
     scope().cell.setWords(single_digit_numbers[word.toLowerCase()]);
     scope().$apply();
-    return true;
+    return;
   }
   
-  //Handles adding/removing an apostrophe before two digit numbers
-  if(word[0] == "'" && !isNaN(word.substr(1)))
+  //Handles adding/removing an apostrophe before two digit numbers to denote a year and decades that end in s
+  if(word[0] == "'" && !isNaN(word.substr(1, 2)))
   {
     scope().cell.setWords(word.substr(1));
     scope().$apply();
-    return true;
+    return;
   }
-  if(!isNaN(word) && word.length == 2)
+  
+  console.log(word);
+  
+  if(!isNaN(word.substr(0, 2)) && (word.length == 2 || (word.length == 3 && word[2] == "s")))
   {
     scope().cell.setWords("'" + word);
     scope().$apply();
-    return true;
+    return;
   }
   
   //Inserts/removes commas into four digit numbers
@@ -270,16 +274,14 @@ numberTriggered = function()
     decimal = decimal[1] ? "." + decimal[1] : "";
     scope().cell.setWords(wholenumber + decimal);
     scope().$apply();
-    return true;
+    return;
   }
   if(!isNaN(word.split(",").join("")))
   {
     scope().cell.setWords(word.split(",").join(""));
     scope().$apply();
-    return true;
+    return;
   }
-  
-  return false;
 }
 
 macroTriggered = function(e) 
@@ -399,12 +401,10 @@ $("body").keydown(function(e) {
 });
 
 $("body").keydown(function(e) {
-  if (e.which == 122 || e.which == 123 || e.which == 192)
+  if (context_sensitive_macro_keys.indexOf(e.which) != -1)
   {
-    if(!numberTriggered())
-    {
-      macroTriggered(e);
-    }
+    macroTriggered(e);
+    numberTriggered();
   }
 })
 
