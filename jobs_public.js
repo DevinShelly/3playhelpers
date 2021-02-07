@@ -171,14 +171,15 @@ setSpeed = function(newSpeed, updatePrev = true)
   changeSpeed(newSpeed - currentSpeed, updatePrev);
 }
 
+last_keypress = new Date().getTime();
 updateTimeWorked = function() 
 {
-  if(!scope())
+  now = new Date();
+  if(!scope() || now.getTime() - last_keypress < 1000)
   {
     return;
   }
   
-  now = new Date();
   midnight = new Date(now);
   midnight.setHours(24, 0, midnight_offset*60*60, 0);
 
