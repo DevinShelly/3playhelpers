@@ -1,4 +1,4 @@
-keypress_timeout = 1; //this is how long between keypresses/mouse movement before it stops counting you as working
+keypress_timeout = 1; //this is how long in minutes between keypresses/mouse movement before it stops counting you as working
 midnight_offset = 6; //this is when a new day starts for record keeping purposesin hours. 0 is midnight, 1 is 1 AM, -1 is 11 PM, etc
 previousSpeed = 1.0; //this sets the default speed you start a file at when you open it
 
@@ -91,52 +91,6 @@ transcript = function() {
   return scope().cell.transcript;
 }
 
-//This function fires on startup
-previousSpeed = 2.0;
-finished = 0;
-
-onStartup = function() {
-  if ($(".modal-footer button").click().length == 0) {
-    setTimeout(onStartup, 100);
-    return;
-  }
-  
-  if(parseRate() < 0.31)
-  {
-    previousSpeed = 8.0;
-    finished = 1.0;
-  }
-  else if(parseRate() < 0.5)
-  {
-    previousSpeed = 3.0;
-  }
-  else if(parseRate() < 0.65)
-  {
-    previousSpeed = 2.5;
-  }
-  toggleSpeed();
-
-  if (angular.element($(".active-cell")).scope().cell.words == "[NO SPEECH]") {
-    words = "[MUSIC PLAYING]";
-    if ($(".panel:contains('Handle Instrumental Music Only - Return')").length) {
-      words = "RETURN RETURN RETURN RETURN RETURN RETURN RETURN";
-
-    }
-    scope().cell.setWords(words);
-    scope().$apply();
-    angular.element($(".active-cell").eq(6)).scope().paragraph.transcript.makeNewParagraph(angular.element($(".active-cell").eq(6)).scope().cell);
-    angular.element($("videogular")).scope().ctrl.tpVideoService.playerApi.play();
-    $(".fa-check").parent().click();
-  } else {
-    $("#finish-dropdown li").not(":eq(1)").remove();
-  }
-  
-  
-  
-}
-
-onStartup();
-
 //Adds the following functunality to within a job
 // Ctr + [ decreases playback speed by 0.1
 // Ctr + ] increases playback speed by 0.1
@@ -218,18 +172,32 @@ setSpeed = function(newSpeed, updatePrev = true)
   changeSpeed(newSpeed - currentSpeed, updatePrev);
 }
 
-updateTimeWorked = function() {
-  midnight = midnight = new Date();
-    midnight.setHours(23 + midnight_offset, 59, 59, 0);
+updateTimeWorked = function() 
+{
+  if(!scope())
+  {
+    return;
+  }
+  
+  now = new Date();
+  midnight = new Date(now);
+  midnight.setHours(24, 0, midnight_offset*60*60, 0);
+
+  if(midnight.getTime() - now.getTime() > 24*60*60*1000)
+  {
+    midnight.setDate(midnight.getDate() - 1);
+  }
+  else if(midnight.getTime() - now.getTime() < 0)
+  {
+    midnight.setDate(midnight.getDate() + 1);
+  }
+  
   if (!Cookies.get('working_time'))
   {
     Cookies.set ('working_time', 0, {expires: midnight});
   }
-  now = new Date();
+  
   last_keypress = parseInt(Cookies.get('last_keypress') || now.getTime());
-  if (isNaN(last_keypress)) {
-    last_keypress = now.getTime();
-  }
   
   Cookies.set('last_keypress', (new Date()).getTime(), {
     expires: new Date(now.getTime() + keypress_timeout*1000*60)
@@ -237,7 +205,7 @@ updateTimeWorked = function() {
   elapsed_time = now.getTime() - last_keypress;
   
   working_time = parseInt(Cookies.get('working_time'));
-  Cookies.set('working_time', working_time + elapsed_time);
+  Cookies.set('working_time', working_time + elapsed_time, {expires: midnight});
   updateFileWorkingTime(elapsed_time);
   updateDisplay();
 }
@@ -346,8 +314,8 @@ macroTriggered = function(e)
     return;
   }
 
-  isSpeaker = macroWord[macroWord.length - 1] == ":";
-  setMacro(macroWord, isSpeaker, index);
+  isSpeaker = word[word.length - 1] == ":";
+  setMacro(word, isSpeaker, index);
 
   e.preventDefault();
   e.stopPropagation();
@@ -714,23 +682,6 @@ saveFileData = function()
   }
 }
 
-onFileLoad = function() {
-  //If the file has yet to fully load, try again
-  if (!$(".active-cell").length) {
-    setTimeout(onFileLoad, 100);
-    return;
-  }
-
-  //If this is the initial loading, save the file first
-  if (!getFilesData()[parseID()]) 
-  {
-    saveFileData();
-  }
-  
-  console.log(getFilesData());
-  loadFileSelector();
-}
-
 loadFileSelector = function()
 {
   $("#duplicate_data").remove();
@@ -932,13 +883,59 @@ offsetFile = function(id, offsetTime)
   localStorage.setItem("content_data", content_data);
 }
 
+//This function fires on startup
+finished = 0;
+
+onFileLoad = function() 
+{
+  if (!$(".modal-footer button").click().length)
+  {
+    setTimeout(onFileLoad, 100);
+    return;
+  }
+  
+  //If this is the initial loading, save the file first
+  if (!getFilesData()[parseID()]) 
+  {
+    saveFileData();
+  }
+  
+  if(parseRate() < 0.31)
+  {
+    previousSpeed = 8.0;
+    finished = 1.0;
+  }
+  else if(parseRate() < 0.5)
+  {
+    previousSpeed = 3.0;
+  }
+  else if(parseRate() < 0.65)
+  {
+    previousSpeed = 2.5;
+  }
+  toggleSpeed();
+
+  if (angular.element($(".active-cell")).scope().cell.words == "[NO SPEECH]") {
+    words = "[MUSIC PLAYING]";
+    if ($(".panel:contains('Handle Instrumental Music Only - Return')").length) {
+      words = "RETURN RETURN RETURN RETURN RETURN RETURN RETURN";
+
+    }
+    scope().cell.setWords(words);
+    scope().$apply();
+    angular.element($(".active-cell").eq(6)).scope().paragraph.transcript.makeNewParagraph(angular.element($(".active-cell").eq(6)).scope().cell);
+    angular.element($("videogular")).scope().ctrl.tpVideoService.playerApi.play();
+    $(".fa-check").parent().click();
+  } else {
+    $("#finish-dropdown li").not(":eq(1)").remove();
+  }
+  
+  loadFileSelector();
+  
+  $(".col-md-6").eq(1).prepend($(".panel-open").eq(1));
+  $("#finish-dropdown a").mousedown(saveFileData);
+}
 
 onFileLoad();
-
-setInterval(function() {
-  $(".col-md-6").eq(1).prepend($(".panel-open").eq(1));
-  $("#finish-dropdown a").off("mousedown");
-  $("#finish-dropdown a").mousedown(saveFileData);
-}, 100);
 
 document.onmousemove = updateTimeWorked;
