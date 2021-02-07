@@ -1,3 +1,7 @@
+keypress_timeout = 1; //this is how long between keypresses/mouse movement before it stops counting you as working
+midnight_offset = 6; //this is when a new day starts for record keeping purposesin hours. 0 is midnight, 1 is 1 AM, -1 is 11 PM, etc
+previousSpeed = 1.0; //this sets the default speed you start a file at when you open it
+
 // Read
 /**
  * Minified by jsDelivr using UglifyJS v3.1.10.
@@ -118,7 +122,7 @@ onStartup = function() {
       words = "RETURN RETURN RETURN RETURN RETURN RETURN RETURN";
 
     }
-    setWords(scope().cell, words);
+    scope().cell.setWords(words);
     scope().$apply();
     angular.element($(".active-cell").eq(6)).scope().paragraph.transcript.makeNewParagraph(angular.element($(".active-cell").eq(6)).scope().cell);
     angular.element($("videogular")).scope().ctrl.tpVideoService.playerApi.play();
@@ -139,11 +143,6 @@ onStartup();
 // Double tapping Shift + Space will toggle between a speed of 1.0 and your previous non-1.0 speed
 // Also increases the maximum speed from 2.0 to 4.0, at which point the audio cuts out
 
-offsetDate = function() {
-  //This starts a new day at 6 AM
-  offset = 6 * 1000 * 3600;
-  return new Date(Date.now() - offset);
-}
 
 //Speed functions
 speed = function(){
@@ -163,7 +162,8 @@ updateDisplay = function() {
     $($("#duplicate_data")).after("<div class = 'btn-group' id = 'speed-display'></div>")
     setTimeout(updateDisplay, 100);
   }
-  file_working_hours = getDurationData()[parseID()] ? getDurationData()[parseID()]["file_working_time"]/1000/3600 : 0;
+  
+  file_working_hours = parseInt(getFilesData()[parseID()].working_time)/1000/3600;
   file_hours = Math.floor(file_working_hours);
   file_minutes = Math.floor(file_working_hours*60-file_hours*60);
   file_seconds = Math.floor(file_working_hours*3600 -file_minutes*60 - file_hours*3600);
@@ -219,32 +219,34 @@ setSpeed = function(newSpeed, updatePrev = true)
 }
 
 updateTimeWorked = function() {
-  now = offsetDate();
-  if (Cookies.get('current_date') != now.toDateString()) {
-    Cookies.set('current_date', now.toDateString(), {
-      expires: 1
-    });
-    Cookies.set('working_time', 0, {
-      expires: 1
-    });
+  midnight = midnight = new Date();
+    midnight.setHours(23 + midnight_offset, 59, 59, 0);
+  if (!Cookies.get('working_time'))
+  {
+    Cookies.set ('working_time', 0, {expires: midnight});
   }
-  last_keypress = parseInt(Cookies.get('last_keypress'));
+  now = new Date();
+  last_keypress = parseInt(Cookies.get('last_keypress') || now.getTime());
   if (isNaN(last_keypress)) {
     last_keypress = now.getTime();
   }
-  working_time = parseInt(Cookies.get('working_time'));
-  Cookies.set('last_keypress', now.getTime(), {
-    expires: 1
+  
+  Cookies.set('last_keypress', (new Date()).getTime(), {
+    expires: new Date(now.getTime() + keypress_timeout*1000*60)
   });
-  elapsed_time = Math.max(0, now.getTime() - last_keypress);
-  if (elapsed_time < 60000) {
-    updateFileWorkingTime(elapsed_time);
-    working_time = working_time + elapsed_time;
-    Cookies.set('working_time', working_time, {
-      expires: 1
-    });
-  }
+  elapsed_time = now.getTime() - last_keypress;
+  
+  working_time = parseInt(Cookies.get('working_time'));
+  Cookies.set('working_time', working_time + elapsed_time);
+  updateFileWorkingTime(elapsed_time);
   updateDisplay();
+}
+
+updateFileWorkingTime = function(ellapsed_time) {
+  files_data = getFilesData(); 
+  file_data = files_data[parseID()];
+  files_data[parseID()].working_time += ellapsed_time;
+  localStorage.setItem("files_data",  JSON.stringify(files_data));
 }
 
 setMacro = function(word, isSpeaker, index) {
@@ -258,65 +260,89 @@ setMacro = function(word, isSpeaker, index) {
   }
 }
 
-setWords = function(cell, word)
+numberTriggered = function()
 {
-  if(cell.words == word)
+  single_digit_numbers = {"0":"zero", "1":"one", "2": "two", "3": "three", "4":"four", "5":"five", "6":"six", "7":"seven", "8":"eight", "9":"nine", 
+  "zero":"0", "one":"1", "two":"2", "three":"3", "four":"4", "five":"5", "six":"6", "seven":"7", "eight":"8", "nine":"9"}; 
+  word = scope().cell.words;
+  
+  //Flips between words/digits for single digit numbers
+  if(single_digit_numbers[word.toLowerCase()])
   {
-    return;
+    scope().cell.setWords(single_digit_numbers[word.toLowerCase()]);
+    scope().$apply();
+    return true;
   }
-  cell.setWords("");
-  previousLetter = "";
-  for (letter of word)
+  
+  //Handles adding/removing an apostrophe before two digit numbers
+  if(word[0] == "'" && !isNaN(word.substr(1)))
   {
-    cell.setWords(cell.words + previousLetter + letter);
-    previousLetter = letter == " " ? " " : "";
+    scope().cell.setWords(word.substr(1));
+    scope().$apply();
+    return true;
   }
+  if(!isNaN(word) && word.length == 2)
+  {
+    scope().cell.setWords("'" + word);
+    scope().$apply();
+    return true;
+  }
+  
+  //Inserts/removes commas into four digit numbers
+  if(!isNaN(word))
+  {
+    decimal = word.split(".");
+    wholenumber = parseInt(decimal[0]).toLocaleString("en-us");
+    decimal = decimal[1] ? "." + decimal[1] : "";
+    scope().cell.setWords(wholenumber + decimal);
+    scope().$apply();
+    return true;
+  }
+  if(!isNaN(word.split(",").join("")))
+  {
+    scope().cell.setWords(word.split(",").join(""));
+    scope().$apply();
+    return true;
+  }
+  
+  return false;
 }
 
-save_and_load_macros = function(e) {
-  f12 = 123;
-  f11 = 122;
-  index = e.which > 57 ? e.which - 97: e.which - 49;
-  console.log(index);
-  var macroWords;
-  if (e.which != f11 && e.which != f12) {
-    if (index < 0) {
-      index = 9;
-    }
-  }
+macroTriggered = function(e) 
+{
+  index = e.which > 57 ? e.which - 97 : e.which - 49;
   
-  macroWord = $(".user-selected").text().trim();
-  console.log(macroWord);
-  if (macroWord.split("||").length == 2) {
-    key = macroWord.split("||")[0];
-    value = macroWord.split("||")[1];
-    localStorage.setItem(key.toLowerCase(), value);
-    macroWord = key;
-  }
-  
-  if (localStorage.getItem(macroWord.toLowerCase())) {
-    key = macroWord;
-    macroWord = localStorage.getItem(macroWord.toLowerCase());
-  }
-  else if (parseInt(macroWord)) 
+  var word;
+  if (index < 0) 
   {
-    macroWord = parseInt(macroWord).toLocaleString();
-    if (macroWord.length == 2)
+    index = 9;
+  }
+  
+  words = JSON.parse(localStorage.getItem("words") || "{}");
+  word = scope().cell.words;
+  if (word.split("|").length == 2) 
+  {
+    key = word.split("|")[0];
+    value = word.split("|")[1];
+    words[key] = value;
+    try
     {
-      macroWord = "'" + macroWord;
+      localStorage.setItem("words", JSON.stringify(words));
     }
-  }
-  else if (macroWord[0] == "'" && parseInt(macroWord.substr(1)) && macroWord.length == 3)
-  {
-    macroWord = macroWord.substr(1);
+    catch
+    {
+      alert("You are out of storage and cannot add any additional custom macros");
+    }
+    word = key;
   }
   
-  setWords(scope().cell, macroWord);
+  word = words[word.toLowerCase()] || word;
+  
+  scope().cell.setWords(word);
   scope().$apply();
 
-
-  if (e.which == f12 || e.which == f11) {
-    e.preventDefault;
+  if (e.which >= 122) 
+  {
     return;
   }
 
@@ -331,8 +357,9 @@ previousSpace = Date.now();
 initialToggle = false;
 
 clearSpeakerID = function() {
-  if (scope().cell.speakerLabel) {
-    setWords(scope().cell, "");
+  if (scope().cell.speakerLabel) 
+  {
+    scope().cell.setWords("");
     scope().$apply();
   }
 }
@@ -391,11 +418,21 @@ $("body").keydown(function(e) {
 });
 
 $("body").keydown(function(e) {
-  if (e.ctrlKey && e.shiftKey && ((e.which >= 48 && e.which <= 57) || (e.which >= 96 && e.which <= 105)) || e.which == 123 || e.which == 122) 
+  if (e.ctrlKey && e.shiftKey && ((e.which >= 48 && e.which <= 57) || (e.which >= 96 && e.which <= 105))) 
   {
-    save_and_load_macros(e);
+    macroTriggered(e);
   }
 });
+
+$("body").keydown(function(e) {
+  if (e.which == 122 || e.which == 123 || e.which == 192)
+  {
+    if(!numberTriggered())
+    {
+      macroTriggered(e);
+    }
+  }
+})
 
 $("body").keydown(function(e) {
   if (e.ctrlKey && !e.shiftKey && ((e.which >= 48 && e.which <= 57) || (e.which >= 96 && e.which <= 105))) {
@@ -458,14 +495,14 @@ $("body").keydown(function(e) {
   if (e.ctrlKey && e.which == 68 && !e.shiftKey) {
     words = scope().cell.words;
     if (words.endsWith("--")) {
-      setWords(scope().cell, "--" + words.substr(0, words.length-2).toLowerCase());
+      scope().cell.setWords("--" + words.substr(0, words.length-2).toLowerCase());
       
     } else if (words.startsWith("--")) {
-      setWords(scope().cell, words.substr(2));
+      scope().cell.setWords(words.substr(2));
     }
     else
     {
-      setWords(scope().cell, words + "--");
+      scope().cell.setWords(words + "--");
     }
     scope().$apply();
     e.stopPropagation();
@@ -481,9 +518,12 @@ $("body").keydown(function(e) {
     for (char of word) {
       spelledWord = spelledWord + char + "-";
     }
-    spelledWord = spelledWord.split("---").join("");
     spelledWord = spelledWord.substr(0, spelledWord.length - 1).toUpperCase();
-    setWords(scope().cell, spelledWord);
+    if(spelledWord.split("---").length>1)
+    {
+      spelledWord = spelledWord.split("---").join("").toLowerCase();
+    }
+    scope().cell.setWords(spelledWord);
     scope().$apply();
     e.stopPropagation();
   }
@@ -508,32 +548,11 @@ $("body").keydown(function(e) {
     e.stopPropagation();
   }
 });
-/// TODO: Add ability to long press to ignore all spelling errors
-// spellcheckTimestamp = null;
-// clickstart = null;
-// $("span").mousedown(function(e) {
-//   if (this.classList.contains("spellcheck-misspelled"))
-//   {
-//     clickstart = Date.now();
-//     spellcheckTimestamp = this.getAttribute("timestamp");
-//   }
-//   console.log(this.classList);
-// });
 
-// $("span").click(function(e) {
-//   if(Date.now() - clickstart>100 && Date.now() - clickstart<1000 && this.getAttribute("timestamp") == spellcheckTimestamp)
-//   {
-//     $(".spellcheck-ignore").eq(1).click();
-//     console.log("clicking");
-//   }
-//   console.log("click");
-// });
-
-
-characterSet = [32, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 45, 34, 47, 39, 44, 46, 45, 58, 91, 93, 35, 33, 64, 40, 41, 36, 37, 38, 193, 225, 201, 233, 205, 237, 211, 243, 218, 250];
+characterSet = characterSet = [32,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,49,50,51,52,53,54,55,56,57,48,45,34,47,39,44,46,45,58,91,93,35,33,64,40,41,36,37,38,225,233,237,243,250];
 /* Have to convert the characterSet to charCodes for encoding reasons(?) using the following
 
-  characters = " ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890-\"/',.-:[]#!@()$%&ÁáÉéÍíÓóÚú";
+  characters = " abcdefghijklmnopqrstuvwxyz1234567890-\"/',.-:[]#!@()$%&áéíóú";
   characterSet = [];
   for (character of characters)
   {
@@ -543,12 +562,12 @@ characterSet = [32, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 
 */
 
 pasteWord = function(word) {
-  for (char of word) {
+  for (char of word.toLowerCase()) {
     if (characterSet.indexOf(char.charCodeAt(0)) == -1) {
       return;
     }
   }
-  setWords(scope().cell, word);
+  scope().cell.setWords(word);
   scope().$apply();
 };
 
@@ -568,7 +587,7 @@ $("body").keydown(function(e) { //Automatically copies the current cell contents
 removeHyphen = function(e) {
   words = scope().cell.words;
   if (words.replace("-", "") != words && words[words.length - 1] != "-") {
-    setWords(scope().cell, words.replace("-", ""));
+    scope().cell.setWords(words.replace("-", ""));
     scope().$apply();
     e.stopPropagation();
     e.preventDefault();
@@ -577,7 +596,7 @@ removeHyphen = function(e) {
 
 splitHyphen = function() {
   if (scope().cell.words.replace("-", "") != scope().cell.words) {
-    setWords(scope().cell, scope().cell.words.replace("-", " "));
+    scope().cell.setWords(scope().cell.words.replace("-", " "));
     scope().$apply();
   }
 }
@@ -612,124 +631,114 @@ parseID = function() {
   return $(".tab-pane:eq(6) td.ng-binding:eq(1)").text();
 }
 
-parsePrice = function() {
+parsePay = function() {
   return parseFloat($(".tab-pane:eq(6) td.ng-binding:eq(15)").text().replace("$", ""));
 }
 
 parseRate = function() {
   parts = parseDuration().split(":");
   minutes = parseFloat(parts[0]*60) + parseFloat(parts[1]) + parseFloat(parts[2])/60;
-  return parsePrice()/minutes;
+  return parsePay()/minutes;
 }
 
-getFileData = function(id) {
-  //console.log("Getting fileData");
-  return JSON.parse(localStorage.getItem(id));
+getFilesData = function() {
+  return JSON.parse(localStorage.getItem("files_data") || "{}");
 }
 
-getDurationData = function() {
-  //console.log("Getting durationData");  
-  data = JSON.parse(localStorage.getItem(parseDuration()));
-  return data;
+getContentData = function() {
+  return JSON.parse(localStorage.getItem("content_data") || "{}");
 }
 
-deleteFiles = function(deleteNonPermanent) {
-  console.log("Deleting files");
-  durations = Object.keys(localStorage).filter(k => k.split(":").length == 3);
-  deleted = false;
-  for (duration of durations) {
-    files = JSON.parse(localStorage.getItem(duration));
-    for (file in files) {
-      console.log(files[file].expiration < Infinity);
-      if (Date.now() - files[file].expiration > 0 || (deleteNonPermanent && files[file].expiration < Infinity)) {
-        console.log("Deleting file:" + JSON.stringify(files[file]));
-        deleted = delete files[file];
-        localStorage.removeItem(file);
-      } else {
-        console.log("Couldn't delete the following file: " + JSON.stringify(files[file]));
-      }
+getContentData = function() {
+  return JSON.parse(localStorage.getItem("content_data") || "{}");
+}
+
+getSameDurationFiles = function()
+{
+  output = {};
+  filesData = getFilesData();
+  for (id in filesData)
+  {
+    if(filesData[id].duration == parseDuration())
+    {
+      output[id] = filesData[id];
     }
-    Object.keys(duration).length ? localStorage.setItem(duration, JSON.stringify(files)) : localStorage.removeItem(duration);
   }
-  return deleted;
+  return output;
 }
 
-saveDurationData = function() {
-  durationData = getDurationData() || {};
-  console.log(durationData);
-  previousFileWorkingTime = durationData[parseID()] ? parseFloat(durationData[parseID()]["file_working_time"]) : 0;
-  durationData[parseID()] = {
-    "name": parseName(),
-    "expiration": Date.now() + 4 * 1000 * 60 * 60,
-    "file_working_time": isNaN(previousFileWorkingTime) ? 0 : previousFileWorkingTime
-  };
-  localStorage.setItem(parseDuration(), JSON.stringify(durationData));
-}
-
-updateFileWorkingTime = function(ellapsed_file_working_time) {
-  durationData = getDurationData();
-  previousFileWorkingTime = durationData[parseID()] ? parseFloat(durationData[parseID()]["file_working_time"]) : 0;
-  durationData[parseID()]["file_working_time"] = previousFileWorkingTime + ellapsed_file_working_time;
-  localStorage.setItem(parseDuration(), JSON.stringify(durationData));
-}
-
-saveFileData = function() {
-  console.log("Saving fileData");
-  fileData = getFileData(parseID());
+saveFileData = function() 
+{
+  files_data = getFilesData();
+  file_data = files_data[parseID()];
+  
   content = transcript().tpTranscriptSaveService.emergencySaveContent();
-  if (!fileData) {
-    fileData = {};
-    fileData.original = content;
-  } else {
-    fileData.edited = content;
+  content_data = getContentData();
+  
+  
+  if (!file_data) 
+  {
+    file_data = {};
+    file_data.working_time = 0;
+    file_data.pay = parsePay();
+    file_data.duration = parseDuration();
+    file_data.name = parseName();
+    content_data[parseID()] = {};
+    content_data[parseID()].original = content;
+    
+  } 
+  else 
+  {
+    file_data.payRate = parseFloat(parsePay())/(parseFloat(fileData.working_time)/3600/1000).toFixed(2);
+    content_data[parseID()].edited = content;
   }
-
-  try {
-    localStorage.setItem(parseID(), JSON.stringify(fileData));
-  } catch (error) {
-    deleteFiles(false);
-    try {
-      localStorage.setItem(parseID(), JSON.stringify(fileData));
-    } catch (error) {
-      deleteFiles(true);
-      try {
-        localStorage.setItem(parseID(), JSON.stringify(fileData));
-      } catch {
-        alert("Unable to save save: " + error);
-      }
-    }
+  
+  files_data[parseID()] = file_data;
+  
+  try 
+  {
+    console.log(content_data);
+    localStorage.setItem("files_data", JSON.stringify(files_data));
+    localStorage.setItem("content_data", JSON.stringify(content_data));
+  } 
+  catch (error) 
+  {
+    sortedFileIDs = Object.keys(filesData).sort(function(a, b) {return parseInt(a) > parseInt(b)});
+    delete filesData[sortedFileIDs[0]];
+    delete filesData[parseID()];
+    delete content_data[sortedFileIDs[0]];
+    delete content_data[parseID()];
+    localStorage.setItem("files_data", JSON.stringify(filesData));
+    toLocaleStorage.setItem("content_data", JSON.stringify(content_data));
+    saveFileData();
   }
 }
 
-saveData = function(e, callback) {
-  console.log("Saving data");
-  saveDurationData();
-  saveFileData();
-  console.log("Done saving");
-
-}
-
-loadFileSelector = function() {
+onFileLoad = function() {
   //If the file has yet to fully load, try again
   if (!$(".active-cell").length) {
-    setTimeout(loadFileSelector, 100);
+    setTimeout(onFileLoad, 100);
     return;
   }
 
   //If this is the initial loading, save the file first
-  if (!getFileData(parseID())) {
-    console.log("Initially saving data");
-    saveData();
-    loadFileSelector();
-    return;
+  if (!getFilesData()[parseID()]) 
+  {
+    saveFileData();
   }
+  
+  console.log(getFilesData());
+  loadFileSelector();
+}
 
-  durationData = getDurationData();
+loadFileSelector = function()
+{
   $("#duplicate_data").remove();
   select = "<select id = 'duplicate_data'><option value='blank'></option>";
   fileToLoad = null;
-  for (id of Object.keys(durationData).reverse()) {
-    name = id != parseID() ? durationData[id].name : "Original ASR";
+  sameDurationFiles = getSameDurationFiles();
+  for (id of Object.keys(sameDurationFiles).reverse()) {
+    name = id != parseID() ? sameDurationFiles[id].name : "Original ASR";
     select = select + "<option value = '" + id + "'>" + name + "</option>";
     if (parseName().indexOf(name) + name.indexOf(parseName()) != -2) {
       i = parseInt(id);
@@ -823,16 +832,6 @@ fixedData = function(fileData, currentData) {
   return output;
 }
 
-savePermanently = function(duration, id, name)
-{
-  files = JSON.parse(localStorage.getItem(duration));
-  file = files[id];
-  file.name = name;
-  file.expiration = "INFINITY";
-  files[id] = file;
-  localStorage.setItem(duration, JSON.stringify(files));
-}
-
 populateData = function(e, id, startingRange=0, endingRange=1000*60*60*24)
 {
   idToLoad = id ? id : $("#duplicate_data").val();
@@ -840,7 +839,9 @@ populateData = function(e, id, startingRange=0, endingRange=1000*60*60*24)
     return;
   }
   emergencySaveContent = transcript().tpTranscriptSaveService.emergencySaveContent();
-  unfixedData = idToLoad == parseID() ? getFileData(idToLoad).original : getFileData(idToLoad).edited;
+  console.log(getContentData()[idToLoad]);
+  console.log(id);
+  unfixedData = idToLoad == parseID() ? getContentData()[idToLoad].original : getContentData()[idToLoad].edited;
   fileData = fixedData(unfixedData, emergencySaveContent);
 
   for (timestamp in fileData.words) 
@@ -851,7 +852,7 @@ populateData = function(e, id, startingRange=0, endingRange=1000*60*60*24)
       continue;
     }
     cell = transcript().getCell(timestamp) ? transcript().getCell(timestamp) : transcript().createCell(timestamp, "");
-    setWords(cell, fileData.words[timestamp].replace("<i>", "").replace("</i>", ""));
+    cell.setWords(fileData.words[timestamp].replace("<i>", "").replace("</i>", ""));
     cell.setItalics(fileData.words[timestamp].indexOf("</i>") != -1);
     scope().$apply();
 
@@ -880,8 +881,8 @@ checkadjacentwords = function() {
       //dirtycell.setWords("");
     }
     if (nextdirtycell.originalData.words == dirtycell.words) {
-      setWords(nextdirtycell, dirtycell.words);
-      setWords(dirtycell, "");
+      nextdirtycell.setWords(dirtycell.words);
+      dirtycell.setWords("");
       i = i + 1;
     }
   }
@@ -895,7 +896,7 @@ shiftright = function() {
     cell = transcript().getCell($(span).attr("timestamp"));
     nextSpan = spans[i + 1];
     nextCell = transcript().getCell($(nextSpan).attr("timestamp"));
-    setWords(nextCell, cell.words);
+    nextCell.setWords(cell.words);
   }
   scope().$apply();
 }
@@ -908,7 +909,7 @@ shiftleft = function() {
     cell = transcript().getCell($(span).attr("timestamp"));
     prevSpan = spans[i + 1];
     prevCell = transcript().getCell($(prevSpan).attr("timestamp"));
-    setWords(prevCell, cell.words);
+    prevCell.setWords(cell.words);
   }
   scope().$apply();
 }
@@ -916,7 +917,8 @@ shiftleft = function() {
 offsetFile = function(id, offsetTime)
 {
   offset = {edited:{words:{}, paragraphs:[]}};
-  original = JSON.parse(localStorage.getItem(id));
+  content_data = getContentData();
+  original = content_data[id];
   for(timestamp in original.edited.words)
   {
     offset.edited.words[parseInt(timestamp) + offsetTime] = original.edited.words[timestamp];
@@ -926,18 +928,17 @@ offsetFile = function(id, offsetTime)
     offset.edited.paragraphs.push(parseInt(timestamp)+offsetTime);
   }
   key = id + " " + offsetTime;
-  localStorage.setItem(key, JSON.stringify(offset));
-  console.log(offset);
-  console.log(key);
+  content_data[key] = offset;
+  localStorage.setItem("content_data", content_data);
 }
 
 
-loadFileSelector();
+onFileLoad();
 
 setInterval(function() {
   $(".col-md-6").eq(1).prepend($(".panel-open").eq(1));
   $("#finish-dropdown a").off("mousedown");
-  $("#finish-dropdown a").mousedown(saveData);
+  $("#finish-dropdown a").mousedown(saveFileData);
 }, 100);
 
 document.onmousemove = updateTimeWorked;
