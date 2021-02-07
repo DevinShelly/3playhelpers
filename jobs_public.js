@@ -173,23 +173,30 @@ setSpeed = function(newSpeed, updatePrev = true)
 
 updateTimeWorked = function() 
 {
-  //Prevents errors from being thrown before file fully loads
   if(!scope())
   {
     return;
   }
   
-  midnight = midnight = new Date();
-    midnight.setHours(23 + midnight_offset, 59, 59, 0);
+  now = new Date();
+  midnight = new Date(now);
+  midnight.setHours(24, 0, midnight_offset*60*60, 0);
+
+  if(midnight.getTime() - now.getTime() > 24*60*60*1000)
+  {
+    midnight.setDate(midnight.getDate() - 1);
+  }
+  else if(midnight.getTime() - now.getTime() < 0)
+  {
+    midnight.setDate(midnight.getDate() + 1);
+  }
+  
   if (!Cookies.get('working_time'))
   {
     Cookies.set ('working_time', 0, {expires: midnight});
   }
-  now = new Date();
+  
   last_keypress = parseInt(Cookies.get('last_keypress') || now.getTime());
-  if (isNaN(last_keypress)) {
-    last_keypress = now.getTime();
-  }
   
   Cookies.set('last_keypress', (new Date()).getTime(), {
     expires: new Date(now.getTime() + keypress_timeout*1000*60)
@@ -197,7 +204,7 @@ updateTimeWorked = function()
   elapsed_time = now.getTime() - last_keypress;
   
   working_time = parseInt(Cookies.get('working_time'));
-  Cookies.set('working_time', working_time + elapsed_time);
+  Cookies.set('working_time', working_time + elapsed_time, {expires: midnight});
   updateFileWorkingTime(elapsed_time);
   updateDisplay();
 }
