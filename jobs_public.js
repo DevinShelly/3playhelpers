@@ -154,8 +154,9 @@ changeSpeed = function(changeBy, updatePrev = true)
 toggleSpeed = function() {
   
   currentSpeed = parseFloat(speed().val());
-  if (currentSpeed != 1.0 && !(currentSpeed == 8.0 && previousSpeed != 8.0)) 
+  if (currentSpeed != 1.0) 
   {
+    previousSpeed = currentSpeed;
     setSpeed(1.0, false);
   } 
   else 
@@ -540,7 +541,6 @@ getFilesData = function() {
 
 saveFileData = function() 
 {
-  console.log("Saving data");
   files_data = getFilesData();
   file_data = files_data[parseID()];
   
