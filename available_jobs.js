@@ -48,9 +48,9 @@ display_percentages = function()
 {
   $(".greenColorBgReal").each(function()
   {
-    price = parseFloat($(this).parent().prev().text().replace("$", ""));
-    bonus = parseFloat($(this).text().replace("$", ""));
-    percentage = (bonus/price*100).toFixed(0) + "%";
+    var price = parseFloat($(this).parent().prev().text().replace("$", ""));
+    var bonus = parseFloat($(this).text().replace("$", ""));
+    var percentage = (bonus/price*100).toFixed(0) + "%";
     $(this).text(this.textContent + " (" + percentage + ")");
     $(this).parent().next().css("text-align", "center");
   });
@@ -67,25 +67,25 @@ if(market_container)
 //Autoclaiming
 parse_deadline = function (deadline)
 {
-  ////console.log(2);
-  pm = deadline.trim().slice(-2) == "pm";
-  deadline = deadline.trim().substring(0, deadline.trim().length-2);
-  hours = deadline.split(":")[0].slice(-2);
-  minutes = deadline.slice(-2);
+  //////console.log(2);
+  var pm = deadline.trim().slice(-2) == "pm";
+  var deadline = deadline.trim().substring(0, deadline.trim().length-2);
+  var hours = deadline.split(":")[0].slice(-2);
+  var minutes = deadline.slice(-2);
   if (hours != "12" && pm)
   {
-    newHours = parseInt(hours) + 12;
+    var newHours = parseInt(hours) + 12;
     deadline = deadline.split(",")[0] + ", " + newHours.toString() + ":" + minutes;
   }
   deadline = deadline.split(",")[0] + ", 2021 " + deadline.split(", ")[1];
   deadline = deadline.replace("  ", " ");
-  console.log("parsed deadline " + deadline);
+  //console.log("parsed deadline " + deadline);
   return  Date.parse(deadline);
 }
 
 parse_duration = function(duration)
 {
-  ////console.log(3);
+  //////console.log(3);
   return parseInt(duration[0])*60 + parseInt(duration[1]);
 }
 
@@ -112,7 +112,7 @@ class AutoClaimFilter {
     var passes = rate <= parseFloat(this.params[max_base_rate]);
     if (!passes)
     {
-      console.log("base " + rate);
+      //console.log("base " + rate);
     }
     return passes;
     
@@ -123,7 +123,7 @@ class AutoClaimFilter {
     var passes =  bonus >= parseFloat(this.params[min_bonus_rate]);
     if (!passes)
     {
-      console.log("bonus " + bonus);
+      //console.log("bonus " + bonus);
     }
     return passes;
   }
@@ -134,8 +134,8 @@ class AutoClaimFilter {
     var passes = deadline >= minimumDeadline;
     if (!passes)
     {
-      console.log("deadline " + deadline);
-      console.log("minimum deadline " + minimumDeadline);
+      //console.log("deadline " + deadline);
+      //console.log("minimum deadline " + minimumDeadline);
     }
     return passes;
   }
@@ -145,7 +145,7 @@ class AutoClaimFilter {
     var passes = ratio >= parseFloat(this.params[min_bonus_ratio]);
     if (!passes)
     {
-      console.log("ratio " + ratio);
+      //console.log("ratio " + ratio);
     }
     return passes;
   }
@@ -163,8 +163,8 @@ class AutoClaimFilter {
         return true;
       }
     }
-    console.log("in project " + in_project);
-    console.log("project" + project);
+    //console.log("in project " + in_project);
+    //console.log("project" + project);
     return false;
   }
   
@@ -175,7 +175,7 @@ class AutoClaimFilter {
       var not_project = not_in_project[i].substring(1);
       if (project.indexOf(not_project) != -1)
       {
-        console.log("not in project " + not_project);
+        //console.log("not in project " + not_project);
         return true;
       }
     }
@@ -187,7 +187,7 @@ class AutoClaimFilter {
     var passes =  parseInt(this.params[minutes_left_to_claim]) > duration;
     if (!passes)
     {
-      console.log("time_left " + duration);
+      //console.log("time_left " + duration);
     }
     return passes;
   }
@@ -197,14 +197,14 @@ class AutoClaimFilter {
     var passes =  parseInt(this.params[min_duration_in_mins]) <= duration;
     if (!passes)
     {
-      console.log("duration " + duration);
+      //console.log("duration " + duration);
     }
     return passes;
   }
   
   should_claim_row(row)
   {
-    ////console.log(4);
+    //////console.log(4);
     
     if (this.params[projects] == ["DUPLICATES"])
     {
@@ -257,28 +257,28 @@ filters = [];
 
 name_duration_pair = function(row)
 {
-  tds = $(row).find("td");
-  duration = tds.eq(3).text().trim();
-  name = tds.eq(0).text().split("| ")[1];
+  var tds = $(row).find("td");
+  var duration = tds.eq(3).text().trim();
+  var name = tds.eq(0).text().split("| ")[1];
   name = name.split(")").length > 1 ? name.split(")")[1].trim() : name.trim();
   return {name:name, duration:duration};
 }
 
 file_was_claimed = function(row) 
 {
-  previously_claimed_files = JSON.parse(localStorage.getItem("previously_claimed_files")) || [];
+  var previously_claimed_files = JSON.parse(localStorage.getItem("previously_claimed_files")) || [];
   previously_claimed_files.push(name_duration_pair(row));
   localStorage.setItem("previously_claimed_files", JSON.stringify(previously_claimed_files));
-  console.log(filters);
+  //console.log(filters);
   
   for (var f in filters)
   {
-    filter = filters[f];
+    var filter = filters[f];
     if(filter.should_claim_row(row))
     {
-      console.log("Filter claimed file:" + row.textContent + " " + JSON.stringify(filter.params));
+      //console.log("Filter claimed file:" + row.textContent + " " + JSON.stringify(filter.params));
       filter.reduce_time_left(row);
-      console.log(filter);
+      //console.log(filter);
       $(".autoclaim_row").not(".autoclaim_header").find("input").eq(6+8*f).val(parseInt(filter.params[minutes_left_to_claim]));
       return;
     }
@@ -294,24 +294,24 @@ parse_row = function()
       $(this).find(".btn").click();
       $(this).find(".btn").removeAttr("href"); //Disables the button so it can't be claimed multiple times
       market_observer.observe(this, config);
-      console.log("Claiming:" + $(this).text());
-      console.log(filter.params);
+      //console.log("Claiming:" + $(this).text());
+      //console.log(filter.params);
       return;
     }
-    ////console.log("-------------------")
+    //////console.log("-------------------")
   }
   
 }
 
 loop_rows = function ()
 {
-  //console.log("Looping rows");
+  ////console.log("Looping rows");
   $("tr.clickable_row").each(parse_row);
 }
 
 create_autoclaim = function()
 {
-  ////console.log(7);
+  //////console.log(7);
   if($("#autoclaim_filters").length === 0)
   {
     $("#main_container").prepend(`<div class="box-content" id="autoclaim_filters" style="min-height: 0px;"></div>`);
@@ -327,7 +327,7 @@ create_autoclaim = function()
 
 create_autoclaim_row = function()
 {
-  ////console.log(8);
+  //////console.log(8);
   row_html = `<div class="accordion-group accordion-heading clearfix autoclaim_row">
         <label>Projects: 
     <input type="text" name="projects">
@@ -353,7 +353,7 @@ create_autoclaim_row = function()
 
 save_autoclaim = function()
 {
-  ////console.log(9);
+  //////console.log(9);
   var params = [];
   for (var filter of filters)
   {
@@ -364,18 +364,18 @@ save_autoclaim = function()
 
 reset_autoclaim = function()
 {
-  ////console.log(10);
+  //////console.log(10);
   filters = Cookies.getJSON("autoclaim").map(function(p) {return new AutoClaimFilter(p)});
   update_filters();
 }
 
 filters_changed = function()
 {
-  ////console.log(11);
+  //////console.log(11);
   filters =[]
   $(".autoclaim_row").not(".autoclaim_header").each(function(index){
-    inputs = $(this).find("input");
-    params = {projects:inputs[0].value.split("|"), max_base_rate:inputs[1].value, min_bonus_rate:inputs[2].value, min_duration_in_mins:inputs[3].value, 
+    var inputs = $(this).find("input");
+    var params = {projects:inputs[0].value.split("|"), max_base_rate:inputs[1].value, min_bonus_rate:inputs[2].value, min_duration_in_mins:inputs[3].value, 
     min_deadline_in_mins:inputs[4].value, min_bonus_ratio:inputs[5].value, minutes_left_to_claim:inputs[6].value};
     filters.push(new AutoClaimFilter(params));
   });
@@ -384,13 +384,13 @@ filters_changed = function()
 
 update_filters = function()
 {
-  ////console.log(12);
+  //////console.log(12);
   $(".autoclaim_row").not(".autoclaim_header").remove();
   for(var filter of filters)
   {
     create_autoclaim_row();
-    row = $(".autoclaim_row").not(".autoclaim_header").last()[0];
-    inputs = $(row).find("input");
+    var row = $(".autoclaim_row").not(".autoclaim_header").last()[0];
+    var inputs = $(row).find("input");
     inputs[0].value = filter.params[projects].join("|");
     inputs[1].value = filter.params[max_base_rate];
     inputs[2].value = filter.params[min_bonus_rate];
@@ -403,7 +403,7 @@ update_filters = function()
 
 delete_autoclaim = function(button)
 {
-  ////console.log(13);
+  //////console.log(13);
   $(button).parent().remove();
   filters_changed();
 }
@@ -413,7 +413,7 @@ countdown_interval = null;
 
 delay_changed = function()
 {
-  ////console.log(14);
+  //////console.log(14);
   countdown_interval = setInterval (function(){
       delay = $("#autoclaim_delay")[0];
       if (delay.value>0)
@@ -434,7 +434,7 @@ delay_changed = function()
 
 timeout_changed = function()
 {
-  ////console.log(15);
+  //////console.log(15);
   clearTimeout(disable_autoclaim_id);
   if(disable_autoclaim_id)
   {
@@ -446,9 +446,9 @@ create_button = function()
 {
   if ($(".auto-refresh").length == 0)
   {
-      //console.log("Creating buttons: " + disable_autoclaim_id);
-      autorefresh_button = "<a class = 'btn btn-icon auto-refresh'></a>";
-      autoclaim_button = "<a class = 'btn btn-icon auto-claim'></a>"
+      ////console.log("Creating buttons: " + disable_autoclaim_id);
+      var autorefresh_button = "<a class = 'btn btn-icon auto-refresh'></a>";
+      var autoclaim_button = "<a class = 'btn btn-icon auto-claim'></a>"
       $(".icon-refresh").parent().parent().append(autorefresh_button);
       $(".icon-refresh").parent().parent().append(autoclaim_button);
       autorefresh_id != null ? enable_autorefresh() : disable_autorefresh();
@@ -466,7 +466,7 @@ enable_autorefresh = function()
 
 disable_autorefresh = function()
 {
-  //console.log("Disabling autorefresh");
+  ////console.log("Disabling autorefresh");
   clearTimeout(autorefresh_id);
   autorefresh_id = null;
   $('.auto-refresh').text("Start Autorefreshing");
@@ -475,7 +475,7 @@ disable_autorefresh = function()
 
 enable_autoclaim = function()
 {
-  ////console.log(19);
+  //////console.log(19);
   should_autoclaim = true;
   clearTimeout(disable_autoclaim_id);
   $('.auto-claim').text("Stop Autoclaiming");
@@ -488,16 +488,16 @@ enable_autoclaim = function()
   document.onclick = function(){
     clearTimeout(disable_autoclaim_id);
     disable_autoclaim_id = setTimeout(disable_autoclaim, $("#autoclaim_timeout").val()*60*1000);
-    ////console.log("Resetting autoclaim delay");
+    //////console.log("Resetting autoclaim delay");
   };
-  //console.log("Enabled autoclaim:" + disable_autoclaim_id);
+  ////console.log("Enabled autoclaim:" + disable_autoclaim_id);
 }
 
 disable_autoclaim = function()
 {
-  ////console.log(20);
+  //////console.log(20);
   should_autoclaim = false;
-  //console.log("Disabling autoclaim");
+  ////console.log("Disabling autoclaim");
   clearTimeout(disable_autoclaim_id);
   $('.auto-claim').text("Start Autoclaiming");
   $('.auto-claim').css('background-color', '#FFA07A');
@@ -509,7 +509,7 @@ disable_autoclaim = function()
 
 if (window.location.href === "https://jobs.3playmedia.com/available_jobs")
 {
-    ////console.log(22);
+    //////console.log(22);
     setInterval(create_autoclaim, 100);
 }
 
@@ -517,32 +517,32 @@ if (window.location.href === "https://jobs.3playmedia.com/available_jobs")
 
 offsetDate = function()
 {
-    ////console.log(23);
+    //////console.log(23);
     //This starts a new day at 6 AM
-    offset = 6 * 1000 * 3600;
+    var offset = 6 * 1000 * 3600;
     return new Date(Date.now() - offset);
 }
 
 updatePay = function()
 {
-  ////console.log(24);
+  //////console.log(24);
   if($(".daily_pay").length != 0)
   {
     return;
   }
-  total = parseFloat($($("#current_pay h2")[0]).text().substr(1).replace(",", ""));
+  var total = parseFloat($($("#current_pay h2")[0]).text().substr(1).replace(",", ""));
   if (total === null || isNaN(total))
   {
     return;
   }
   
-  now = offsetDate();
+  var now = offsetDate();
   if (Cookies.get('current_date') != now.toDateString())
   {
       Cookies.set ('current_date', now.toDateString(), {expires: 1} );
       Cookies.set('yesterdays_total', total, {expires: 1});
   }
-  today = total - parseFloat(Cookies.get('yesterdays_total'));
+  var today = total - parseFloat(Cookies.get('yesterdays_total'));
   if (today < 0)
   {
       Cookies.set('yesterdays_total', 0, {expires: 1});
@@ -557,26 +557,26 @@ updatePay = function()
 
 if (window.location.href === "https://jobs.3playmedia.com/pay_stubs")
 {
-  earnings = eval($(".main script")[0].text.split("var data = ")[1].split(";")[0])[0];
-  months = $(".tickLabel");
-  end = months[11].textContent.split(" ")[1];
-  ytd_earnings = earnings[11][1];
+  var earnings = eval($(".main script")[0].text.split("var data = ")[1].split(";")[0])[0];
+  var months = $(".tickLabel");
+  var end = months[11].textContent.split(" ")[1];
+  var ytd_earnings = earnings[11][1];
   for (var i = 10; i>=0; i--)
   {
-    end_i = months[i].textContent.split(" ")[1];
-    ////console.log(end);
-    ////console.log(end_i);
+    var end_i = months[i].textContent.split(" ")[1];
+    //////console.log(end);
+    //////console.log(end_i);
     if (end === end_i)
     {
       ytd_earnings += earnings[i][1];
     }
   }
   
-  year = (new Date()).getFullYear();
-  jan1 = new Date("January 1, " + year + " 00:00:00");
-  dec31 = (new Date("December 31, " + year + " 23:59:59"));
-  year_elapsed = (new Date()-jan1)/(dec31-jan1);
-  est_earnings = ytd_earnings/year_elapsed;
+  var year = (new Date()).getFullYear();
+  var jan1 = new Date("January 1, " + year + " 00:00:00");
+  var dec31 = (new Date("December 31, " + year + " 23:59:59"));
+  var year_elapsed = (new Date()-jan1)/(dec31-jan1);
+  var est_earnings = ytd_earnings/year_elapsed;
   $("h1").after("<br><h5>Year to Date</h5><h1>$" + ytd_earnings.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + "</h1>" + "<br><h5>Estimated Full Year Earnings</h5><h1>$" +est_earnings.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + "</h1>"); 
   
 }
@@ -609,7 +609,7 @@ $("<style>")
   
 click_refresh = function()
 {
-   //console.log("Clicking refresh");
+   ////console.log("Clicking refresh");
   $(".icon-refresh").eq(0).parent().click();
 }
 
