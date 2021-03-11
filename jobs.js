@@ -1,8 +1,9 @@
 keypress_timeout = 1; //this is how long in minutes between keypresses/mouse movement before it stops counting you as working
 midnight_offset = 6; //this is when a new day starts for record keeping purposesin hours. 0 is midnight, 1 is 1 AM, -1 is 11 PM, etc
-previousSpeed = 1.0; //this sets the default speed you start a file at when you open it
+previousSpeed = 2.0; //this sets the default speed you start a file at when you open it
 context_sensitive_macro_keys = [123, 192]; //these are the keycodes for backtick (`) and F12. These trigger a context sensitive macro  
                                            //for a different key, go to keycode.io, hit it, and then add it to the array
+should_not_advance = false;
 // Read
 /**
  * Minified by jsDelivr using UglifyJS v3.1.10.
@@ -107,6 +108,17 @@ speed = function(){
 }
 
 
+starting_seconds = 0;
+
+$("body").keydown(function(e)
+{
+  if (e.ctrlKey && e.shiftKey && e.which == 13)
+  {
+    starting_seconds = parseFloat(scope().cell.timestamp)/1000;
+    console.log()
+  }
+});
+
 updateDisplay = function() {
   working_time = parseInt(Cookies.get('working_time'));
   daily_hours = Math.floor(working_time / 1000 / 3600);
@@ -126,8 +138,8 @@ updateDisplay = function() {
   times = $(".tp-transcript-controls div span").eq(3).text();
   current_time = times.split("/")[0].trim().split(":");
   max_time = times.split("/")[1].trim().split(":");
-  current_seconds = parseFloat(current_time[0])*3600 + parseFloat(current_time[1])*60 + parseFloat(current_time[2]);
-  max_seconds = parseFloat(max_time[0])*3600 + parseFloat(max_time[1])*60 + parseFloat(max_time[2]);
+  current_seconds = Math.max(0, parseFloat(current_time[0])*3600 + parseFloat(current_time[1])*60 + parseFloat(current_time[2]) - starting_seconds);
+  max_seconds = parseFloat(max_time[0])*3600 + parseFloat(max_time[1])*60 + parseFloat(max_time[2]) - starting_seconds;
   percentage = finished || current_seconds/max_seconds;
   pay_rate = parsePay()/file_working_hours*percentage;
   pay_text = "Pay rate: $" + pay_rate.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -181,11 +193,6 @@ updateTimeWorked = function()
   {
     return;
   }
-  
-  console.log(last_keypress);
-  console.log(now.getTime());
-  console.log(now.getTime() - last_keypress);
-  
   
   midnight = new Date(now);
   midnight.setHours(24, 0, midnight_offset*60*60, 0);
@@ -440,6 +447,7 @@ $("body").keydown(function(e) {
   if (e.shiftKey && e.which == 32) {
     if (Date.now() - previousSpace < 500) {
       toggleSpeed();
+      previousD
     }
     previousSpace = Date.now(0);
   }
@@ -558,6 +566,46 @@ $("body").keydown(function(e) { //Automatically copies the current cell contents
   }
 });
 
+
+$("body").keydown(function(e) {
+  if(should_not_advance && !e.ctrlKey && !e.shiftKey && !e.altKey && e.which == 190)
+  {
+    scope().cell.setWords(scope().cell.words + ".");
+    scope().cell.editing = true;
+    scope().$apply();
+    
+    e.stopPropagation();
+    e.preventDefault();
+  }
+});
+
+$("body").keydown(function(e) {
+  if(should_not_advance && !e.ctrlKey && !e.shiftKey && !e.altKey && e.which == 188)
+  {
+    scope().cell.setWords(scope().cell.words + ",");
+    scope().cell.editing = true;
+    scope().$apply();
+    
+    e.stopPropagation();
+    e.preventDefault();
+  }
+});
+
+$("body").keydown(function(e) {
+  if(should_not_advance && !e.ctrlKey && e.shiftKey && e.which == 190)
+  {
+    words = scope().cell.words;
+    first_letter = words[0] == words.toLowerCase()[0] ? words.substr(0, 1).toUpperCase() : words.substr(0, 1).toLowerCase();
+    console.log(first_letter);
+    scope().cell.setWords(first_letter + words.substr(1, words.length-1));
+    scope().cell.editing = true;
+    scope().$apply();
+    
+    e.stopPropagation();
+    e.preventDefault();
+  }
+});
+
 removeHyphen = function(e) {
   words = scope().cell.words;
   if (words.replace("-", "") != words && words[words.length - 1] != "-") {
@@ -633,7 +681,7 @@ getSameDurationFiles = function()
   filesData = getFilesData();
   for (id in filesData)
   {
-    if(filesData[id].duration == parseDuration())
+    if(filesData[id].duration.split(".")[0] == parseDuration().split(".")[0])
     {
       output[id] = filesData[id];
     }
@@ -663,29 +711,51 @@ saveFileData = function()
   } 
   else 
   {
-    file_data.payRate = parseFloat(parsePay())/(parseFloat(fileData.working_time)/3600/1000).toFixed(2);
+    file_data.payRate = parseFloat(parsePay())/(parseFloat(file_data.working_time)/3600/1000).toFixed(2);
     content_data[parseID()].edited = content;
   }
   
   files_data[parseID()] = file_data;
   
   try 
-  {
-    console.log(content_data);
+  {   
     localStorage.setItem("files_data", JSON.stringify(files_data));
     localStorage.setItem("content_data", JSON.stringify(content_data));
+    
   } 
   catch (error) 
   {
-    sortedFileIDs = Object.keys(filesData).sort(function(a, b) {return parseInt(a) > parseInt(b)});
-    delete filesData[sortedFileIDs[0]];
-    delete filesData[parseID()];
-    delete content_data[sortedFileIDs[0]];
-    delete content_data[parseID()];
-    localStorage.setItem("files_data", JSON.stringify(filesData));
-    toLocaleStorage.setItem("content_data", JSON.stringify(content_data));
+    deleteFileData();
     saveFileData();
   }
+}
+
+deleteFileData = function()
+{
+  console.log("Deleting files");
+  console.log(parseID());
+  files_data = getFilesData();
+  content_data = getContentData();
+  sorted_fileIDs = Object.keys(files_data).sort(function(a, b) {return parseInt(a) > parseInt(b)});
+  console.log(Object.keys(content_data).length);
+  //deletes half your finished files 
+  for(i=0; i<sorted_fileIDs.length/2; i++)
+  {
+    console.log(sorted_fileIDs[i]);
+    if(content_data[sorted_fileIDs] && content_data[sorted_fileIDs[i]].edited)
+    {
+      delete files_data[sorted_fileIDs[i]];
+      delete content_data[sorted_fileIDs[i]];
+    }
+  }
+  delete content_data[parseID()];
+  delete files_data[parseID()];
+  
+  console.log(Object.keys(content_data).length);
+  localStorage.removeItem("files_data");
+  localStorage.removeItem("content_data");
+  //localStorage.setItem("files_data", JSON.stringify(files_data));
+  //localStorage.setItem("content_data", JSON.stringify(content_data));
 }
 
 loadFileSelector = function()
@@ -896,6 +966,7 @@ onFileLoad = function()
 {
   if (!$(".modal-footer button").click().length)
   {
+    console.log("No button");
     setTimeout(onFileLoad, 100);
     return;
   }
@@ -903,10 +974,12 @@ onFileLoad = function()
   //If this is the initial loading, save the file first
   if (!getFilesData()[parseID()]) 
   {
+    console.log("saving file");
     saveFileData();
   }
+  console.log("file exists");
   
-  if(parseRate() < 0.31)
+  if(parseRate() < 0.32)
   {
     previousSpeed = 8.0;
     finished = 1.0;
@@ -940,8 +1013,29 @@ onFileLoad = function()
   
   $(".col-md-6").eq(1).prepend($(".panel-open").eq(1));
   $("#finish-dropdown a").mousedown(saveFileData);
+  
+  document.onmousemove = updateTimeWorked;
 }
+
+checkForPauses = function(){
+  current_text = $(".video-highlighted").text().trim();
+  current_timestamp = parseInt($(".video-highlighted").attr("timestamp"));
+  next_word_timestamp = parseInt($(".active-cell").filter(function(index){
+    text = $(this).text();
+    upcoming = parseInt($(this).attr("timestamp")) > current_timestamp;
+    return text.trim().length>0 && upcoming;
+  }).eq(0).attr("timestamp"));
+  if(current_text.length == 0 && Date.now() - previousSpace > 1000 && next_word_timestamp - current_timestamp > 8000)
+  {
+    setSpeed(8.0, false);
+  }
+  if(next_word_timestamp - current_timestamp < 4000)
+  {
+    setSpeed(previousSpeed);
+  }
+}
+
+setInterval(checkForPauses, 100);
 
 onFileLoad();
 
-document.onmousemove = updateTimeWorked;
