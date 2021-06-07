@@ -4,6 +4,7 @@ previousSpeed = 2.0; //this sets the default speed you start a file at when you 
 context_sensitive_macro_keys = [123, 192]; //these are the keycodes for backtick (`) and F12. These trigger a context sensitive macro  
                                            //for a different key, go to keycode.io, hit it, and then add it to the array
 should_not_advance = false;
+autospeedup = true;
 // Read
 /**
  * Minified by jsDelivr using UglifyJS v3.1.10.
@@ -115,7 +116,7 @@ $("body").keydown(function(e)
   if (e.ctrlKey && e.shiftKey && e.which == 13)
   {
     starting_seconds = parseFloat(scope().cell.timestamp)/1000;
-    console.log()
+    //console.log()
   }
 });
 
@@ -155,20 +156,16 @@ setTimeout(function()
   });
 }, 5000);
 
+
+
 changeSpeed = function(changeBy, updatePrev = true)
 {
-  speed().val(parseFloat(speed().val()) + changeBy);
-  angular.element(speed()).triggerHandler("input");
-  if (updatePrev)
-  {
-    previousSpeed = parseFloat(speed().val());
-  }
-  updateDisplay();
+  setSpeed(parseFloat(speed().val()) + changeBy, updatePrev);
 }
 
 toggleSpeed = function() {
   
-  currentSpeed = parseFloat(speed().val());
+  var currentSpeed = parseFloat(speed().val());
   if (currentSpeed != 1.0 && !(currentSpeed == 8.0 && previousSpeed != 8.0)) 
   {
     setSpeed(1.0, false);
@@ -181,8 +178,14 @@ toggleSpeed = function() {
 
 setSpeed = function(newSpeed, updatePrev = true)
 {
-  currentSpeed = parseFloat(speed().val());
-  changeSpeed(newSpeed - currentSpeed, updatePrev);
+  speed().val(newSpeed);
+  angular.element(speed()).triggerHandler("input");
+  updateDisplay();
+  
+  if (updatePrev)
+  {
+    previousSpeed = parseFloat(speed().val());
+  }
 }
 
 last_keypress = new Date().getTime();
@@ -264,7 +267,7 @@ numberTriggered = function()
     return;
   }
   
-  console.log(word);
+  //console.log(word);
   
   if(!isNaN(word.substr(0, 2)) && (word.length == 2 || (word.length == 3 && word[2] == "s")))
   {
@@ -355,6 +358,7 @@ $("body").keydown(function(e)
   if (e.ctrlKey && e.shiftKey && e.which == 221)
   {
     setSpeed(8.0, false);
+    autospeedup = true;
   }
 });
 
@@ -362,7 +366,12 @@ $("body").keydown(function(e)
 {
   if (e.ctrlKey && e.shiftKey && e.which == 219)
   {
+    if (previousSpeed > 3)
+    {
+      previousSpeed = 1.5;
+    }
     setSpeed(previousSpeed);
+    autospeedup = false;
   }
 });
 
@@ -373,7 +382,7 @@ $("body").keydown(function(e)
   {
     e.stopPropagation();
     e.preventDefault();
-    console.log("attempting to block new window/tab");
+    //console.log("attempting to block new window/tab");
   }
 });
 
@@ -425,7 +434,7 @@ $("body").keydown(function(e) {
   if(e.altKey && e.which == 68)
   {
     clearSpeakerID();
-    console.log("clearing ID");
+    //console.log("clearing ID");
   }
 });
 
@@ -447,9 +456,8 @@ $("body").keydown(function(e) {
   if (e.shiftKey && e.which == 32) {
     if (Date.now() - previousSpace < 500) {
       toggleSpeed();
-      previousD
     }
-    previousSpace = Date.now(0);
+    previousSpace = Date.now();
   }
 });
 
@@ -540,7 +548,7 @@ characterSet = characterSet = [32,97,98,99,100,101,102,103,104,105,106,107,108,1
   {
     characterSet.push(character.charCodeAt(0));
   }
-  console.log("characterSet = " + JSON.stringify(characterSet));
+  //console.log("characterSet = " + JSON.stringify(characterSet));
 */
 
 pasteWord = function(word) {
@@ -596,7 +604,7 @@ $("body").keydown(function(e) {
   {
     words = scope().cell.words;
     first_letter = words[0] == words.toLowerCase()[0] ? words.substr(0, 1).toUpperCase() : words.substr(0, 1).toLowerCase();
-    console.log(first_letter);
+    //console.log(first_letter);
     scope().cell.setWords(first_letter + words.substr(1, words.length-1));
     scope().cell.editing = true;
     scope().$apply();
@@ -646,7 +654,9 @@ parsePay = function() {
 }
 
 parseName = function() {
-  return $(".tab-pane:eq(6) td.ng-binding:eq(3)").text();
+  full_name = $(".tab-pane:eq(6) td.ng-binding:eq(3)").text();
+  partial_name = full_name.split(") ").length>1 ? full_name.split(") ")[1] : full_name.split(") ")[0];
+  return partial_name;
 }
 
 parseID = function() {
@@ -697,14 +707,16 @@ saveFileData = function()
   content = transcript().tpTranscriptSaveService.emergencySaveContent();
   content_data = getContentData();
   
-  
-  if (!file_data) 
+  console.log("content");
+  console.log(content_data[parseID()]);
+  if (!file_data || !content_data[parseID()]) 
   {
     file_data = {};
     file_data.working_time = 0;
     file_data.pay = parsePay();
     file_data.duration = parseDuration();
     file_data.name = parseName();
+    file_data.timestamp = Date.now();
     content_data[parseID()] = {};
     content_data[parseID()].original = content;
     
@@ -730,32 +742,27 @@ saveFileData = function()
   }
 }
 
-deleteFileData = function()
+getSortedFileIDs = function(files_data = null, oldest_to_newest = true)
 {
-  console.log("Deleting files");
-  console.log(parseID());
+  scalar = oldest_to_newest ? 1 : -1;
+  files_data = files_data || getFilesData();
+  ids = Object.keys(files_data).sort(function(a, b) {
+    let file_a = files_data[a];
+    let file_b = files_data[b];
+    return scalar * (parseInt(file_a.timestamp) - parseInt(file_b.timestamp));
+  });
+  return ids;
+}
+
+deleteFileData = function(file_id = null)
+{
   files_data = getFilesData();
   content_data = getContentData();
-  sorted_fileIDs = Object.keys(files_data).sort(function(a, b) {return parseInt(a) > parseInt(b)});
-  console.log(Object.keys(content_data).length);
-  //deletes half your finished files 
-  for(i=0; i<sorted_fileIDs.length/2; i++)
-  {
-    console.log(sorted_fileIDs[i]);
-    if(content_data[sorted_fileIDs] && content_data[sorted_fileIDs[i]].edited)
-    {
-      delete files_data[sorted_fileIDs[i]];
-      delete content_data[sorted_fileIDs[i]];
-    }
-  }
-  delete content_data[parseID()];
-  delete files_data[parseID()];
-  
-  console.log(Object.keys(content_data).length);
-  localStorage.removeItem("files_data");
-  localStorage.removeItem("content_data");
-  //localStorage.setItem("files_data", JSON.stringify(files_data));
-  //localStorage.setItem("content_data", JSON.stringify(content_data));
+  file_id = file_id || getSortedFileIDs()[0];
+  delete files_data[file_id];
+  delete content_data[file_id];
+  localStorage.setItem("files_data", JSON.stringify(files_data));
+  localStorage.setItem("content_data", JSON.stringify(content_data));
 }
 
 loadFileSelector = function()
@@ -764,17 +771,21 @@ loadFileSelector = function()
   select = "<select id = 'duplicate_data'><option value='blank'></option>";
   fileToLoad = null;
   sameDurationFiles = getSameDurationFiles();
-  for (id of Object.keys(sameDurationFiles).reverse()) {
+  for (id of getSortedFileIDs(sameDurationFiles, false)) {
     name = id != parseID() ? sameDurationFiles[id].name : "Original ASR";
     select = select + "<option value = '" + id + "'>" + name + "</option>";
-    if (parseName().indexOf(name) + name.indexOf(parseName()) != -2) {
+    console.log(name);
+    console.log(parseName());
+    console.log(parseName().indexOf(name) + name.indexOf(parseName()));
+    if (!fileToLoad && parseName().indexOf(name) + name.indexOf(parseName()) != -2) 
+    {
       i = parseInt(id);
       fileToLoad = i;
       setTimeout(function() 
       {
         if(scope().cell.words.indexOf("RETURN RETURN") == -1)
         {
-          populateData(null, i);
+          populateData(null, fileToLoad);
         }
       }, 500);
     }
@@ -859,15 +870,27 @@ fixedData = function(fileData, currentData) {
   return output;
 }
 
-populateData = function(e, id, startingRange=0, endingRange=1000*60*60*24)
+populateData = function(e, id, startingRange=null, endingRange=null)
 {
   idToLoad = id ? id : $("#duplicate_data").val();
+  console.log(idToLoad);
   if (idToLoad == "blank") {
     return;
   }
+  
+  setSpeed(3.0);
+  if(!startingRange)
+  {
+    startingRange = parseFloat($(".user-selected").first().attr("timestamp"));
+  }
+  
+  if(!endingRange)
+  {
+    endingRange = parseFloat($("span[timestamp]").last().attr("timestamp"));
+  }
   emergencySaveContent = transcript().tpTranscriptSaveService.emergencySaveContent();
-  console.log(getContentData()[idToLoad]);
-  console.log(id);
+  //console.log(getContentData()[idToLoad]);
+  //console.log(id);
   unfixedData = idToLoad == parseID() ? getContentData()[idToLoad].original : getContentData()[idToLoad].edited;
   fileData = fixedData(unfixedData, emergencySaveContent);
 
@@ -898,7 +921,7 @@ populateData = function(e, id, startingRange=0, endingRange=1000*60*60*24)
 checkadjacentwords = function() {
 
   dirtycells = $("span.cell-dirty");
-  console.log(dirtycells);
+  //console.log(dirtycells);
   for (let i = 1; i < dirtycells.length - 1; i++) {
     dirtycell = transcript().getCell($(dirtycells[i]).attr("timestamp"));
     prevdirtycell = transcript().getCell($(dirtycells[i - 1]).attr("timestamp"));
@@ -966,20 +989,20 @@ onFileLoad = function()
 {
   if (!$(".modal-footer button").click().length)
   {
-    console.log("No button");
+    //console.log("No button");
     setTimeout(onFileLoad, 100);
     return;
   }
   
   //If this is the initial loading, save the file first
-  if (!getFilesData()[parseID()]) 
+  if (!getFilesData()[parseID()] || !getContentData()[parseID()]) 
   {
-    console.log("saving file");
+    //console.log("saving file");
     saveFileData();
   }
-  console.log("file exists");
+  //console.log("file exists");
   
-  if(parseRate() < 0.32)
+  if(parseRate() < 0.32 || parseRate() > 1.79)
   {
     previousSpeed = 8.0;
     finished = 1.0;
@@ -994,11 +1017,16 @@ onFileLoad = function()
   }
   toggleSpeed();
 
-  if (angular.element($(".active-cell")).scope().cell.words == "[NO SPEECH]") {
+  if (previousSpeed == 8.0) 
+  {
     words = "[MUSIC PLAYING]";
-    if ($(".panel:contains('Handle Instrumental Music Only - Return')").length) {
+    if ($(".panel:contains('Handle Instrumental Music Only - Return')").length) 
+    {
       words = "RETURN RETURN RETURN RETURN RETURN RETURN RETURN";
-
+    }
+    else if ($(".panel:contains('Handle Instrumental Music Only - Generic Music Tags')").length == 0) 
+    {
+      words = "DESCRIPTIVE MUSIC TAGS";
     }
     scope().cell.setWords(words);
     scope().$apply();
@@ -1018,6 +1046,10 @@ onFileLoad = function()
 }
 
 checkForPauses = function(){
+  if(speed().val()==1.0)
+  {
+    return;
+  }
   current_text = $(".video-highlighted").text().trim();
   current_timestamp = parseInt($(".video-highlighted").attr("timestamp"));
   next_word_timestamp = parseInt($(".active-cell").filter(function(index){
@@ -1025,14 +1057,26 @@ checkForPauses = function(){
     upcoming = parseInt($(this).attr("timestamp")) > current_timestamp;
     return text.trim().length>0 && upcoming;
   }).eq(0).attr("timestamp"));
-  if(current_text.length == 0 && Date.now() - previousSpace > 1000 && next_word_timestamp - current_timestamp > 8000)
+  if(autospeedup && current_text.length == 0 && Date.now() - previousSpace > 1000 && (next_word_timestamp - current_timestamp > 4000 || !next_word_timestamp))
   {
     setSpeed(8.0, false);
   }
-  if(next_word_timestamp - current_timestamp < 4000)
+  if(next_word_timestamp - current_timestamp < 4000 && speed().val() == 8.0)
   {
     setSpeed(previousSpeed);
+    
   }
+  //console.log(previousSpeed);
+  //console.log(speed().val());
+}
+
+updateFile = function(id, new_name = null, new_timestamp = null)
+{
+  files = getFilesData();
+  file = files[id];
+  file.name = new_name || file.name;
+  file.timestamp = new_timestamp || file.timestamp;
+  localStorage.setItem("files_data",  JSON.stringify(files));
 }
 
 setInterval(checkForPauses, 100);
