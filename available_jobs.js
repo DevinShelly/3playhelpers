@@ -3,11 +3,13 @@
 
 //Adds the ability to automatically refresh the marketplace every 2 seconds
 
-autorefresh_delay = 5000;
+autorefresh_delay = 12000;
 autorefresh_id = null;
+should_autorefresh = true;
 should_autoclaim = false;
 autoclaim_duration = 40;
 disable_autoclaim_id = null;
+times_refreshed = 0;
 
 observe_market_container = function(mutationsList, observer) 
 {
@@ -21,10 +23,14 @@ observe_market_container = function(mutationsList, observer)
         if($(node).find("#jobs_table").length>0 || node.id == "empty_single")
         {
           display_percentages();
-          if(autorefresh_id)
+          if(should_autorefresh)
           {
-            clearTimeout(autorefresh_id);
-            autorefresh_id = setTimeout(click_refresh, autorefresh_delay);
+            times_refreshed += 1;
+            if (times_refreshed > 6)
+            {
+              window.location.reload(true);
+            }
+            
           }
           if(should_autoclaim)
           {
@@ -67,7 +73,7 @@ if(market_container)
 //Autoclaiming
 parse_deadline = function (deadline)
 {
-  //////console.log(2);
+  //console.log(2);
   var pm = deadline.trim().slice(-2) == "pm";
   var deadline = deadline.trim().substring(0, deadline.trim().length-2);
   var hours = deadline.split(":")[0].slice(-2);
@@ -85,7 +91,7 @@ parse_deadline = function (deadline)
 
 parse_duration = function(duration)
 {
-  //////console.log(3);
+  //console.log(3);
   return parseInt(duration[0])*60 + parseInt(duration[1]);
 }
 
@@ -109,11 +115,7 @@ class AutoClaimFilter {
   
   base_passes(rate)
   {
-    var passes = rate <= parseFloat(this.params[max_base_rate]);
-    if (!passes)
-    {
-      //console.log("base " + rate);
-    }
+    var passes = (rate <= parseFloat(this.params[max_base_rate]) && parseFloat(this.params[max_base_rate]) < 1.79)   || (rate > 1.79 && parseFloat(this.params[max_base_rate]) > 1.79);
     return passes;
     
   }
@@ -130,7 +132,9 @@ class AutoClaimFilter {
   
   deadline_passes(deadline)
   {
-    var minimumDeadline = (new Date()).getTime() + parseInt(this.params[min_deadline_in_mins]) * 60 * 1000;
+    var minimumDeadline = parseInt(this.params[min_deadline_in_mins]) < 60*24*7 ? 
+                          (new Date()).getTime() + parseInt(this.params[min_deadline_in_mins]) * 60 * 1000 :
+                          parseInt(this.params[min_deadline_in_mins]);
     var passes = deadline >= minimumDeadline;
     if (!passes)
     {
@@ -204,7 +208,7 @@ class AutoClaimFilter {
   
   should_claim_row(row)
   {
-    //////console.log(4);
+    //console.log(4);
     
     if (this.params[projects] == ["DUPLICATES"])
     {
@@ -217,16 +221,16 @@ class AutoClaimFilter {
     
     var tds = $(row).find('td');
     var project = tds.eq(0).text();
-    var rate = parseFloat(tds.eq(4).text().substring(1));
+    var base = parseFloat(tds.eq(4).text().substring(1));
     var bonus = parseFloat(tds.eq(5).text().trim().substring(1));
     bonus = bonus ? bonus : 0.0;
     var duration = parse_duration(tds.eq(3).text().split(":"));
     var deadline = parse_deadline(tds.eq(8).text());
     
-    var base_passes = this.base_passes(rate);
+    var base_passes = this.base_passes(base);
     var bonus_passes = this.bonus_passes(bonus);
     var deadline_passes = this.deadline_passes(deadline);
-    var bonus_ratio_passes = this.bonus_ratio_passes(bonus/rate); //bonus / rate >= parseFloat(this.params[min_bonus_ratio]);
+    var bonus_ratio_passes = this.bonus_ratio_passes(bonus/base); //bonus / rate >= parseFloat(this.params[min_bonus_ratio]);
     var time_left_passes = this.time_left_passes(duration); //parseInt(this.params[minutes_left_to_claim]) > duration;
     var duration_passes = this.duration_passes(duration); //parseInt(this.params[min_duration_in_mins]) <= duration;
     
@@ -298,20 +302,20 @@ parse_row = function()
       //console.log(filter.params);
       return;
     }
-    //////console.log("-------------------")
+    //console.log("-------------------")
   }
   
 }
 
 loop_rows = function ()
 {
-  ////console.log("Looping rows");
+  //console.log("Looping rows");
   $("tr.clickable_row").each(parse_row);
 }
 
 create_autoclaim = function()
 {
-  //////console.log(7);
+  //console.log(7);
   if($("#autoclaim_filters").length === 0)
   {
     $("#main_container").prepend(`<div class="box-content" id="autoclaim_filters" style="min-height: 0px;"></div>`);
@@ -320,14 +324,16 @@ create_autoclaim = function()
     <label>Timeout (mins): <input type="text" name = "timeout" value = "40" style = "width:40px;" onchange = "timeout_changed()" id = "autoclaim_timeout"></input></label>
     <input type="button" class ="btn" value="+" name="add_autoclaim_filter" style="margin-left:10px" onclick="create_autoclaim_row()" />
     <input type="button" class ="btn" value="Save" name="save_autoclaim" style="margin-left:10px" onclick="save_autoclaim()" />
-    <input type="button" class ="btn" value="Reset" name="reset_autoclaim" style="margin-left:10px" onclick="reset_autoclaim()"/>`);
+    <input type="button" class ="btn" value="Reset" name="reset_autoclaim" style="margin-left:10px" onclick="reset_autoclaim()"/>
+    <input type="button" class ="btn" value="Show Uniques" name="show_uniques" style="margin-left:10px" onclick="showUniques()"/>
+    <input type="button" class ="btn" value="Hide Uniques" name="hide_uniques" style="margin-left:10px" onclick="hideUniques()"/>`);
     reset_autoclaim();
   }
 }
 
 create_autoclaim_row = function()
 {
-  //////console.log(8);
+  //console.log(8);
   row_html = `<div class="accordion-group accordion-heading clearfix autoclaim_row">
         <label>Projects: 
     <input type="text" name="projects">
@@ -353,7 +359,7 @@ create_autoclaim_row = function()
 
 save_autoclaim = function()
 {
-  //////console.log(9);
+  //console.log(9);
   var params = [];
   for (var filter of filters)
   {
@@ -364,14 +370,14 @@ save_autoclaim = function()
 
 reset_autoclaim = function()
 {
-  //////console.log(10);
+  //console.log(10);
   filters = Cookies.getJSON("autoclaim").map(function(p) {return new AutoClaimFilter(p)});
   update_filters();
 }
 
 filters_changed = function()
 {
-  //////console.log(11);
+  //console.log(11);
   filters =[]
   $(".autoclaim_row").not(".autoclaim_header").each(function(index){
     var inputs = $(this).find("input");
@@ -379,12 +385,12 @@ filters_changed = function()
     min_deadline_in_mins:inputs[4].value, min_bonus_ratio:inputs[5].value, minutes_left_to_claim:inputs[6].value};
     filters.push(new AutoClaimFilter(params));
   });
-  update_filters(params);
+  update_filters();
 }
 
 update_filters = function()
 {
-  //////console.log(12);
+  //console.log(12);
   $(".autoclaim_row").not(".autoclaim_header").remove();
   for(var filter of filters)
   {
@@ -403,7 +409,7 @@ update_filters = function()
 
 delete_autoclaim = function(button)
 {
-  //////console.log(13);
+  //console.log(13);
   $(button).parent().remove();
   filters_changed();
 }
@@ -413,7 +419,7 @@ countdown_interval = null;
 
 delay_changed = function()
 {
-  //////console.log(14);
+  //console.log(14);
   countdown_interval = setInterval (function(){
       delay = $("#autoclaim_delay")[0];
       if (delay.value>0)
@@ -434,7 +440,7 @@ delay_changed = function()
 
 timeout_changed = function()
 {
-  //////console.log(15);
+  //console.log(15);
   clearTimeout(disable_autoclaim_id);
   if(disable_autoclaim_id)
   {
@@ -442,40 +448,48 @@ timeout_changed = function()
   }
 }
 
+autostart = true;
 create_button = function()
 {
   if ($(".auto-refresh").length == 0)
   {
-      ////console.log("Creating buttons: " + disable_autoclaim_id);
+      //console.log("Creating buttons: " + disable_autoclaim_id);
       var autorefresh_button = "<a class = 'btn btn-icon auto-refresh'></a>";
       var autoclaim_button = "<a class = 'btn btn-icon auto-claim'></a>"
       $(".icon-refresh").parent().parent().append(autorefresh_button);
       $(".icon-refresh").parent().parent().append(autoclaim_button);
-      autorefresh_id != null ? enable_autorefresh() : disable_autorefresh();
-      disable_autoclaim_id != null ? enable_autoclaim() : disable_autoclaim();
+      if(!autostart)
+      {
+        should_autorefresh  ? enable_autorefresh() : disable_autorefresh();
+        disable_autoclaim_id != null ? enable_autoclaim() : disable_autoclaim();
+      }
+      else
+      {
+        enable_autorefresh();
+        enable_autoclaim();
+        autostart = false;
+      }
   }
 }
 
 enable_autorefresh = function()
 {
-  clearTimeout(autorefresh_id);
-  autorefresh_id = setTimeout(click_refresh, autorefresh_delay);
+  should_autorefresh = true;
   $(".auto-refresh").text("Stop Autorefreshing");
   $(".auto-refresh").click(disable_autorefresh);
 }
 
 disable_autorefresh = function()
 {
-  ////console.log("Disabling autorefresh");
-  clearTimeout(autorefresh_id);
-  autorefresh_id = null;
   $('.auto-refresh').text("Start Autorefreshing");
   $('.auto-refresh').click(enable_autorefresh);
+  autostart = false;
+  should_autorefresh = false;
 }
 
 enable_autoclaim = function()
 {
-  //////console.log(19);
+  //console.log(19);
   should_autoclaim = true;
   clearTimeout(disable_autoclaim_id);
   $('.auto-claim').text("Stop Autoclaiming");
@@ -483,21 +497,23 @@ enable_autoclaim = function()
   $(".auto-claim").click(disable_autoclaim);
   if(!disable_autoclaim_id)
   {
-    disable_autoclaim_id = setTimeout(disable_autoclaim, $("#autoclaim_timeout").val()*60*1000);
+    timeout = $("#autoclaim_timeout").val() ? $("#autoclaim_timeout").val() * 60 * 1000 : 40*60*1000;
+    disable_autoclaim_id = setTimeout(disable_autoclaim, timeout);
   }
   document.onclick = function(){
     clearTimeout(disable_autoclaim_id);
-    disable_autoclaim_id = setTimeout(disable_autoclaim, $("#autoclaim_timeout").val()*60*1000);
-    //////console.log("Resetting autoclaim delay");
+    timeout = $("#autoclaim_timeout").val() ? $("#autoclaim_timeout").val() * 60 * 1000 : 40*60*1000;
+    console.log(timeout);
+    disable_autoclaim_id = setTimeout(disable_autoclaim, timeout);
   };
-  ////console.log("Enabled autoclaim:" + disable_autoclaim_id);
 }
 
 disable_autoclaim = function()
 {
-  //////console.log(20);
+  console.log("Autoclaim disabled");
+  //console.log(20);
   should_autoclaim = false;
-  ////console.log("Disabling autoclaim");
+  //console.log("Disabling autoclaim");
   clearTimeout(disable_autoclaim_id);
   $('.auto-claim').text("Start Autoclaiming");
   $('.auto-claim').css('background-color', '#FFA07A');
@@ -506,18 +522,11 @@ disable_autoclaim = function()
   disable_autoclaim_id = null;
   document.onclick = null;
 }
-
-if (window.location.href === "https://jobs.3playmedia.com/available_jobs")
-{
-    //////console.log(22);
-    setInterval(create_autoclaim, 100);
-}
-
 //Calculating today's pay
 
 offsetDate = function()
 {
-    //////console.log(23);
+    //console.log(23);
     //This starts a new day at 6 AM
     var offset = 6 * 1000 * 3600;
     return new Date(Date.now() - offset);
@@ -525,7 +534,7 @@ offsetDate = function()
 
 updatePay = function()
 {
-  //////console.log(24);
+  //console.log(24);
   if($(".daily_pay").length != 0)
   {
     return;
@@ -564,8 +573,8 @@ if (window.location.href === "https://jobs.3playmedia.com/pay_stubs")
   for (var i = 10; i>=0; i--)
   {
     var end_i = months[i].textContent.split(" ")[1];
-    //////console.log(end);
-    //////console.log(end_i);
+    //console.log(end);
+    //console.log(end_i);
     if (end === end_i)
     {
       ytd_earnings += earnings[i][1];
@@ -609,15 +618,67 @@ $("<style>")
   
 click_refresh = function()
 {
-   ////console.log("Clicking refresh");
+   //console.log("Clicking refresh");
   $(".icon-refresh").eq(0).parent().click();
+  console.log("clicking autorefresh");
 }
 
-if(window.location.pathname == "/available_jobs")
+switch_filter = function()
+{
+  if(!should_autorefresh)
+  {
+    return;
+  }
+  console.log("switching filter");
+  if ($("#sort_by").val() == "Rate (lowest first)")
+  {
+    $('#sort_by option[value = "Rate (highest first)"]').prop('selected', true);
+  }
+  else
+  {
+    $('#sort_by option[value = "Rate (lowest first)"]').prop('selected', true);
+  }
+  $('#sort_by').trigger("change");
+}
+
+hideUniques = function()
+{
+  rows = $(".clickable_row");
+  for (let i = 0; i<rows.length; i++)
+  {
+    row = rows[i];
+    prev = rows[i-1];
+    next = rows[i+1];
+    time = $(row).children()[3].textContent;
+    prevTime = prev ? $(prev).children()[3].textContent : null;
+    nextTime = next ? $(next).children()[3].textContent : null;
+    //console.log(prevTime);
+    //console.log(time);
+    //console.log(nextTime);
+    //console.log("-------");
+    if(time != prevTime && time != nextTime)
+    {
+      $(row).hide();
+    }
+  }
+  
+  hide_uniques = setTimeout(hideUniques, 100);
+}
+
+showUniques = function()
+{
+  clearInterval(hide_uniques);
+  $(".clickable_row").show();
+}
+
+if(document.URL.startsWith("https://jobs.3playmedia.com/available_jobs"))
 {
   create_button();
   display_percentages();
+  setInterval(create_autoclaim, 100);
+  autorefresh_id = setInterval(switch_filter, autorefresh_delay);
 }
+
 
 
 
