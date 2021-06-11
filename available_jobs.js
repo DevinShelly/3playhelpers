@@ -10,6 +10,7 @@ should_autoclaim = false;
 autoclaim_duration = 40;
 disable_autoclaim_id = null;
 times_refreshed = 0;
+should_hide_uniques = false;
 
 observe_market_container = function(mutationsList, observer) 
 {
@@ -111,6 +112,10 @@ class AutoClaimFilter {
     this.params[projects].filter(function(item, idx){
       return item.length>0;
     });
+    if (this.params[min_deadline_in_mins][0] == "+")
+    {
+      this.params[min_deadline_in_mins] = Date.now() + parseInt(this.params[min_deadline_in_mins].replace("+", ""))*1000*60*60;
+    }
   }
   
   base_passes(rate)
@@ -346,7 +351,7 @@ create_autoclaim_row = function()
 <label>Duration: 
     <input type="text" name="duration" style="max-width:40px"></label>
 <label>Deadline: 
-    <input type="text" name="deadline" style="max-width:40px"></label>
+    <input type="text" name="deadline" style="max-width:60px"></label>
 <label>Ratio: 
     <input type="text" name="ratio" style="max-width:40px"></label>
 <label>Minutes: 
@@ -401,7 +406,8 @@ update_filters = function()
     inputs[1].value = filter.params[max_base_rate];
     inputs[2].value = filter.params[min_bonus_rate];
     inputs[3].value = filter.params[min_duration_in_mins];
-    inputs[4].value = filter.params[min_deadline_in_mins];
+    inputs[4].value = parseInt(filter.params[min_deadline_in_mins]) < 1000 ? filter.params[min_deadline_in_mins] : 
+                                                                             new Date(parseInt(filter.params[min_deadline_in_mins])).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     inputs[5].value = filter.params[min_bonus_ratio];
     inputs[6].value = filter.params[minutes_left_to_claim];
   }
@@ -634,6 +640,10 @@ switch_filter = function()
   {
     $('#sort_by option[value = "Rate (highest first)"]').prop('selected', true);
   }
+  else if ($("#sort_by").val() == "Rate (highest first)")
+  {
+    $('#sort_by option[value = "Duration (longest first)"]').prop('selected', true);
+  }
   else
   {
     $('#sort_by option[value = "Rate (lowest first)"]').prop('selected', true);
@@ -677,8 +687,11 @@ if(document.URL.startsWith("https://jobs.3playmedia.com/available_jobs"))
   display_percentages();
   setInterval(create_autoclaim, 100);
   autorefresh_id = setInterval(switch_filter, autorefresh_delay);
+  if(should_hide_uniques)
+  {
+    hideUniques();
+  }
 }
-
 
 
 
