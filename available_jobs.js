@@ -383,7 +383,7 @@ reset_autoclaim = function()
 filters_changed = function()
 {
   //console.log(11);
-  filters =[]
+  filters =[];
   $(".autoclaim_row").not(".autoclaim_header").each(function(index){
     var inputs = $(this).find("input");
     var params = {projects:inputs[0].value.split("|"), max_base_rate:inputs[1].value, min_bonus_rate:inputs[2].value, min_duration_in_mins:inputs[3].value, 
@@ -406,8 +406,7 @@ update_filters = function()
     inputs[1].value = filter.params[max_base_rate];
     inputs[2].value = filter.params[min_bonus_rate];
     inputs[3].value = filter.params[min_duration_in_mins];
-    inputs[4].value = parseInt(filter.params[min_deadline_in_mins]) < 1000 ? filter.params[min_deadline_in_mins] : 
-                                                                             new Date(parseInt(filter.params[min_deadline_in_mins])).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    inputs[4].value = filter.params[min_deadline_in_mins];
     inputs[5].value = filter.params[min_bonus_ratio];
     inputs[6].value = filter.params[minutes_left_to_claim];
   }
