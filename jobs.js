@@ -1002,7 +1002,7 @@ onFileLoad = function()
   }
   //console.log("file exists");
   
-  if(parseRate() < 0.32 || parseRate() > 1.79)
+  if(scope().cell.words == "[NO SPEECH]" || parseRate() > 1.79)
   {
     previousSpeed = 8.0;
     finished = 1.0;
@@ -1033,8 +1033,6 @@ onFileLoad = function()
     angular.element($(".active-cell").eq(6)).scope().paragraph.transcript.makeNewParagraph(angular.element($(".active-cell").eq(6)).scope().cell);
     angular.element($("videogular")).scope().ctrl.tpVideoService.playerApi.play();
     $(".fa-check").parent().click();
-  } else {
-    $("#finish-dropdown li").not(":eq(1)").remove();
   }
   
   loadFileSelector();
