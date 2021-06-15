@@ -10,7 +10,7 @@ should_autoclaim = false;
 autoclaim_duration = 40;
 disable_autoclaim_id = null;
 times_refreshed = 0;
-should_hide_uniques = false;
+should_hide_uniques = true;
 
 observe_market_container = function(mutationsList, observer) 
 {
@@ -114,7 +114,8 @@ class AutoClaimFilter {
     });
     if (this.params[min_deadline_in_mins][0] == "+")
     {
-      this.params[min_deadline_in_mins] = Date.now() + parseInt(this.params[min_deadline_in_mins].replace("+", ""))*1000*60*60;
+      this.params[min_deadline_in_mins] = Date.now() + parseFloat(this.params[min_deadline_in_mins].replace("+", ""))*1000*60*60;
+      save_autoclaim();
     }
   }
   
