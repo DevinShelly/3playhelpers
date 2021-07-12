@@ -2,16 +2,18 @@ keypress_timeout = 1; //this is how long in minutes between keypresses/mouse mov
 midnight_offset = 6; //this is when a new day starts for record keeping purposesin hours. 0 is midnight, 1 is 1 AM, -1 is 11 PM, etc
 previousSpeed = 2.0; //this sets the default speed you start a file at when you open it
 context_sensitive_macro_keys = [123, 192]; //these are the keycodes for backtick (`) and F12. These trigger a context sensitive macro  
-                                           //for a different key, go to keycode.io, hit it, and then add it to the array
+                                          //for a different key, go to keycode.io, hit it, and then add it to the array
 should_not_advance = false;
 autospeedup = true;
+should_capitalize_hyphenated_words = true;
+
 // Read
 /**
- * Minified by jsDelivr using UglifyJS v3.1.10.
- * Original file: /npm/js-cookie@2.2.0/src/js.cookie.js
- * 
- * Do NOT use SRI with dynamically generated files! More information: https://www.jsdelivr.com/using-sri-with-dynamic-files
- */
+* Minified by jsDelivr using UglifyJS v3.1.10.
+* Original file: /npm/js-cookie@2.2.0/src/js.cookie.js
+* 
+* Do NOT use SRI with dynamically generated files! More information: https://www.jsdelivr.com/using-sri-with-dynamic-files
+*/
 ! function(e) {
   var n = !1;
   if ("function" == typeof define && define.amd && (define(e), n = !0), "object" == typeof exports && (module.exports = e(), n = !0), !n) {
@@ -419,6 +421,10 @@ $("body").keydown(function(e) {
 $("body").keydown(function(e) {
   if (context_sensitive_macro_keys.indexOf(e.which) != -1)
   {
+    if(scope().cell.words.length == 0)
+    {
+      return;
+    }
     macroTriggered(e);
     numberTriggered();
   }
@@ -462,8 +468,14 @@ $("body").keydown(function(e) {
 });
 
 $("body").keydown(function(e) {
-  if (e.ctrlKey && e.which == 77) {
+  if (e.ctrlKey && e.which == 77 && !e.shiftKey) {
     removeHyphen(e);
+  }
+});
+
+$("body").keydown(function(e) {
+  if (e.ctrlKey && e.which == 77 && e.shiftKey) {
+    formatSong(e);
   }
 });
 
@@ -476,10 +488,16 @@ $("body").keydown(function(e) {
 $("body").keydown(function(e) {
   if (e.ctrlKey && e.shiftKey && e.which == 39) {
     followid = setInterval(function() {
-      $(".video-highlighted").click()
+      $(".video-highlighted").click();
+      if($(".video-highlighted").attr("timestamp") == $("span[timestamp]").last().attr("timestamp"))
+      {
+        clearInterval(followid);
+      }
     }, 10);
   }
 });
+
+
 
 $("body").keydown(function(e) {
   if (e.ctrlKey && e.which == 68 && !e.shiftKey) {
@@ -599,6 +617,29 @@ $("body").keydown(function(e) {
   }
 });
 
+$("body").keydown(function(e){
+  if(should_capitalize_hyphenated_words && e.shiftKey && !e.ctrlKey && !e.altKey && e.which == 190)
+  {
+    words = scope().cell.words;
+    hyphenated_words = words.split("-");
+    if (hyphenated_words.length < 2)
+    {
+      return;
+    }
+    for (i in hyphenated_words)
+    {
+      if (hyphenated_words[i].toUpperCase()[0] != hyphenated_words[i][0] && hyphenated_words[i].length > 0)
+      {
+        console.log(hyphenated_words[i])
+        hyphenated_words[i] = hyphenated_words[i][0].toUpperCase() + hyphenated_words[i].slice(1);
+        scope().cell.setWords(words.toLowerCase()[0] + hyphenated_words.join("-").slice(1));
+        return;
+      }
+    }
+    scope().cell.setWords(words.toUpperCase()[0] + words.toLowerCase().slice(1));
+  }
+});
+
 $("body").keydown(function(e) {
   if(should_not_advance && !e.ctrlKey && e.shiftKey && e.which == 190)
   {
@@ -622,6 +663,19 @@ removeHyphen = function(e) {
     e.stopPropagation();
     e.preventDefault();
   }
+}
+
+formatSong = function(e) {
+  words = scope().cell.words;
+  singer = words.split(",")[0].trim();
+  title = words.split(",").length == 1 ? "" : '"' + words.split(",")[1].trim() + '"';
+  title = title.replace('""', '"').replace('""', '"');
+  music = "[MUSIC - " + singer + ", " + title + "]";
+  scope().cell.setWords(music.replace(", ]", "]").toUpperCase());
+  scope().$apply();
+  e.preventDefault();
+  console.log(title);
+  console.log(singer);
 }
 
 splitHyphen = function() {
@@ -1050,11 +1104,12 @@ checkForPauses = function(){
   }
   current_text = $(".video-highlighted").text().trim();
   current_timestamp = parseInt($(".video-highlighted").attr("timestamp"));
-  next_word_timestamp = parseInt($(".active-cell").filter(function(index){
+  next_word = $(".active-cell").filter(function(index){
     text = $(this).text();
     upcoming = parseInt($(this).attr("timestamp")) > current_timestamp;
     return text.trim().length>0 && upcoming;
-  }).eq(0).attr("timestamp"));
+  }).eq(0);
+  next_word_timestamp = next_word ? parseInt(next_word.attr("timestamp")) : current_timestamp;
   if(autospeedup && current_text.length == 0 && Date.now() - previousSpace > 1000 && (next_word_timestamp - current_timestamp > 4000 || !next_word_timestamp))
   {
     setSpeed(8.0, false);
