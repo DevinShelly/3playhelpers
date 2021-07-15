@@ -312,7 +312,7 @@ macroTriggered = function(e)
   {
     key = word.split("|")[0];
     value = word.split("|")[1];
-    words[key] = value;
+    words[key.toLowerCase()] = value;
     try
     {
       localStorage.setItem("words", JSON.stringify(words));
