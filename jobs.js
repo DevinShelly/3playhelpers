@@ -310,9 +310,9 @@ macroTriggered = function(e)
   word = scope().cell.words;
   if (word.split("|").length == 2) 
   {
-    key = word.split("|")[0];
+    key = word.split("|")[0].toLowerCase();
     value = word.split("|")[1];
-    words[key.toLowerCase()] = value;
+    words[key] = value;
     try
     {
       localStorage.setItem("words", JSON.stringify(words));
@@ -622,7 +622,7 @@ $("body").keydown(function(e){
   {
     words = scope().cell.words;
     hyphenated_words = words.split("-");
-    if (hyphenated_words.length < 2)
+    if (hyphenated_words.length < 2 || (words.startsWith("--") && words.slice(2).indexOf("-") == -1))
     {
       return;
     }
@@ -632,11 +632,21 @@ $("body").keydown(function(e){
       {
         console.log(hyphenated_words[i])
         hyphenated_words[i] = hyphenated_words[i][0].toUpperCase() + hyphenated_words[i].slice(1);
+        console.log(hyphenated_words);
         scope().cell.setWords(words.toLowerCase()[0] + hyphenated_words.join("-").slice(1));
+        scope().$apply();
+        e.stopPropagation();
+        e.preventDefault();
         return;
       }
     }
-    scope().cell.setWords(words.toUpperCase()[0] + words.toLowerCase().slice(1));
+    newWords = words.toUpperCase()[0] + words.toLowerCase().slice(1);
+    if(words.startsWith("--"))
+    {
+      newWords = "--" + words.toUpperCase()[2] + words.toLowerCase().slice(3);
+    }
+    scope().cell.setWords(newWords);
+    
   }
 });
 
