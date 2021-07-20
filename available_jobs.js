@@ -3,7 +3,7 @@
 
 //Adds the ability to automatically refresh the marketplace every 2 seconds
 
-autorefresh_delay = 10000;
+autorefresh_delay = 5000;
 autorefresh_id = null;
 should_autorefresh = true;
 should_autoclaim = false;
@@ -110,6 +110,7 @@ const min_deadline_in_mins = "min_deadline_in_mins";
 const projects = "projects";
 const min_bonus_ratio = "min_bonus_ratio";
 const minutes_left_to_claim = "minutes_left_to_claim";
+const duplicates_only = "duplicates_only";
 
 class AutoClaimFilter {
   
@@ -219,18 +220,18 @@ class AutoClaimFilter {
     return passes;
   }
   
-  should_claim_row(row)
+  should_claim_row(row, checking_duplicates = false)
   {
-    //////console.log(4);
+    // //////console.log(4);
     
-    if (this.params[projects] == ["DUPLICATES"])
-    {
-      previously_claimed_files = JSON.parse(localStorage.getItems("previously_claimed_files"));
-      if (previously_claimed_files.indexOf(name_duration_pair(row)))
-      {
-        return true;
-      }
-    }
+    // if (this.params[projects] == ["DUPLICATES"])
+    // {
+    //   previously_claimed_files = JSON.parse(localStorage.getItems("previously_claimed_files"));
+    //   if (previously_claimed_files.indexOf(name_duration_pair(row)))
+    //   {
+    //     return true;
+    //   }
+    // }
     
     var tds = $(row).find('td');
     var project = tds.eq(0).text();
@@ -246,12 +247,17 @@ class AutoClaimFilter {
     var bonus_ratio_passes = this.bonus_ratio_passes(bonus/base); //bonus / rate >= parseFloat(this.params[min_bonus_ratio]);
     var time_left_passes = this.time_left_passes(duration); //parseInt(this.params[minutes_left_to_claim]) > duration;
     var duration_passes = this.duration_passes(duration); //parseInt(this.params[min_duration_in_mins]) <= duration;
-    
+    var duplicates_passes = !(this.params[duplicates_only]) || checking_duplicates;
     
     var in_project = this.in_project(this.params[projects].filter(function(string){return string[0] != "-"}), project);
     var not_in_project = this.not_in_project(this.params[projects].filter(function(string){return string[0] == "-"}), project);
     
-    return duration_passes & base_passes & bonus_passes & deadline_passes & bonus_ratio_passes & in_project & time_left_passes & !not_in_project;
+    return duration_passes && base_passes && bonus_passes && deadline_passes && bonus_ratio_passes && duplicates_passes && in_project  && time_left_passes && !not_in_project;
+  }
+  
+  should_claim_rows(row1, row2)
+  {
+    return this.should_claim_row(row1, this.params[duplicates_only]) && this.should_claim_row(row2, this.params[duplicates_only]);
   }
   
   reduce_time_left(row)
@@ -332,6 +338,7 @@ loop_rows = function ()
 {
   //////console.log("Looping rows");
   $("tr.clickable_row").each(parse_row);
+  claim_duplicates();
 }
 
 create_autoclaim = function()
@@ -346,8 +353,8 @@ create_autoclaim = function()
     <input type="button" class ="btn" value="+" name="add_autoclaim_filter" style="margin-left:10px" onclick="create_autoclaim_row()" />
     <input type="button" class ="btn" value="Save" name="save_autoclaim" style="margin-left:10px" onclick="save_autoclaim()" />
     <input type="button" class ="btn" value="Reset" name="reset_autoclaim" style="margin-left:10px" onclick="reset_autoclaim()"/>
-    <input type="button" class ="btn" value="Show Uniques" name="show_uniques" style="margin-left:10px" onclick="showUniques()"/>
-    <input type="button" class ="btn" value="Hide Uniques" name="hide_uniques" style="margin-left:10px" onclick="hideUniques()"/>`);
+    <input type="button" class ="btn" value="Show Uniques" name="show_uniques" style="margin-left:10px" onclick="show_uniques()"/>
+    <input type="button" class ="btn" value="Hide Uniques" name="hide_uniques" style="margin-left:10px" onclick="hide_uniques()"/>`);
     reset_autoclaim();
   }
 }
@@ -372,6 +379,7 @@ create_autoclaim_row = function()
     <input type="text" name="ratio" style="max-width:40px"></label>
 <label>Minutes: 
     <input type="text" name="minutes" style="max-width:40px"></label>
+    <label>Duplicates:<input type="checkbox" name="duplicates" style="max-width:40px"></label>
 <input type="button" name="delete" value="Delete" onclick="delete_autoclaim(this)"></button>
 </div>`;
   $("#autoclaim_filters").append(row_html);
@@ -418,7 +426,7 @@ filters_changed = function()
   $(".autoclaim_row").not(".autoclaim_header").each(function(index){
     var inputs = $(this).find("input");
     var params = {projects:inputs[0].value.split("|"), max_base_rate:inputs[1].value, min_bonus_rate:inputs[2].value, min_duration_in_mins:inputs[3].value, 
-    min_deadline_in_mins:inputs[4].value, min_bonus_ratio:inputs[5].value, minutes_left_to_claim:inputs[6].value};
+    min_deadline_in_mins:inputs[4].value, min_bonus_ratio:inputs[5].value, minutes_left_to_claim:inputs[6].value, duplicates_only:inputs[7].checked};
     filters.push(new AutoClaimFilter(params));
     
   });
@@ -441,6 +449,7 @@ update_filters = function()
     inputs[4].value = filter.params[min_deadline_in_mins];
     inputs[5].value = filter.params[min_bonus_ratio];
     inputs[6].value = filter.params[minutes_left_to_claim];
+    inputs[7].checked = filter.params[duplicates_only];
   }
 }
 
@@ -708,7 +717,6 @@ switch_filter = function()
         next_filter_function = refresh_rotation[next_index][1];
         $("#sort_by").val(next_filter_name).trigger("change");
         setTimeout(next_filter_function, autorefresh_delay/2);
-        console.log(next_filter_name);
         break;
       }
     }
@@ -718,34 +726,76 @@ switch_filter = function()
   //console.log(Date.now() - last_refresh);
 }
 
-hideUniques = function()
+hide_uniques_id = null;
+hide_uniques = function()
 {
   Cookies.set('should_hide_uniques', 'true');
   rows = $(".clickable_row, .claiming_action");
-  for (let i = 0; i<rows.length; i++)
+  rows.hide();
+  if(rows.length == 1)
+  {
+    rows = $(".clickable_row, .claiming_action").hide();
+  }
+  for (let i = 0; i<rows.length-1; i++)
   {
     row = rows[i];
-    prev = rows[i-1];
-    next = rows[i+1];
+    nextRow = rows[i+1];
     time = $(row).children()[3].textContent;
-    prevTime = prev ? $(prev).children()[3].textContent : null;
-    nextTime = next ? $(next).children()[3].textContent : null;
-    //////console.log(prevTime);
-    //////console.log(time);
-    //////console.log(nextTime);
-    //////console.log("-------");
-    if(time != prevTime && time != nextTime)
+    nextTime = $(nextRow).children()[3].textContent;
+    if(time == nextTime)
     {
-      $(row).hide();
+      $(row).show();
+      $(nextRow).show();
     }
   }
   
-  hide_uniques = setTimeout(hideUniques, 100);
+  hide_uniques_id = setTimeout(hide_uniques, 100);
 }
 
-showUniques = function()
+claim_duplicates = function()
 {
-  clearInterval(hide_uniques);
+  rows = $(".clickable_row, .claiming_action");
+  for(let i = 0; i<rows.length-1; i++)
+  {
+    row = rows[i];
+    nextRow = rows[i+1];
+    time = $(row).children()[3].textContent;
+    nextTime = $(nextRow).children()[3].textContent;
+    
+    name = $(row).children()[0].textContent.split("\n").filter(function(val){return val.length > 0})[1].split(" | ")[1];
+    name = name.split(") ")[1] ? name.split(") ")[1] : name;
+    nextName = $(nextRow).children()[0].textContent.split("\n").filter(function(val){return val.length > 0})[1].split(" | ")[1];
+    nextName = nextName.split(") ")[1] ? nextName.split(") ")[1] : nextName;
+    
+    id = $(row).children()[0].textContent.split("\n").filter(function(val){return val.length > 0})[1].split(" | ")[0];
+    nextID = $(nextRow).children()[0].textContent.split("\n").filter(function(val){return val.length > 0})[1].split(" | ")[1];
+    
+    if (id == nextID || name != nextName)
+    {
+      return;
+    }
+    
+    for(filter of filters)
+    {
+      if(filter.should_claim_rows(row, nextRow))
+      {
+        $(row).find(".btn").click();
+        $(row).find(".btn").removeAttr("href"); //Disables the button so it can't be claimed multiple times
+        
+        $(nextRow).find(".btn").click();
+        $(nextRow).find(".btn").removeAttr("href"); //Disables the button so it can't be claimed multiple times
+        
+        console.log(row.textContent);
+        console.log(nextRow.textContent);
+      }
+    }
+  }
+}
+
+
+show_uniques = function()
+{
+  clearInterval(hide_uniques_id);
   $(".clickable_row").show();
   Cookies.set('should_hide_uniques', 'false');
 }
@@ -759,7 +809,7 @@ if(document.URL.startsWith("https://jobs.3playmedia.com/available_jobs"))
   
   if(should_hide_uniques)
   {
-    hideUniques();
+    hide_uniques();
   }
   
   setInterval(update_autoclaim_titles, 1000);
