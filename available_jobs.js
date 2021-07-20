@@ -15,9 +15,9 @@ should_hide_uniques = JSON.parse(Cookies.get('should_hide_uniques') || "false");
 sort_by_duration = true;
 max_times_refreshed = 25;
 
-refresh_rotation = [["Rate (lowest first)", function(){select_nonfavorites()}],
-["Rate (highest first)", function(){deselect_nonfavorites()}], 
-["Duration (longest first)", function(){}]];
+refresh_rotation = //[["Rate (lowest first)", function(){select_nonfavorites()}],
+//["Rate (highest first)", function(){deselect_nonfavorites()}], 
+[["Duration (longest first)", function(){deselect_nonfavorites()}]];
 
 observe_market_container = function(mutationsList, observer) 
 {
@@ -301,8 +301,7 @@ file_was_claimed = function(row)
     {
       //////console.log("Filter claimed file:" + row.textContent + " " + JSON.stringify(filter.params));
       filter.reduce_time_left(row);
-      //////console.log(filter);
-      $(".autoclaim_row").not(".autoclaim_header").find("input").eq(6+8*f).val(parseInt(filter.params[minutes_left_to_claim]));
+      update_filters();
       return;
     }
   }
@@ -772,7 +771,7 @@ claim_duplicates = function()
     
     if (id == nextID || name != nextName)
     {
-      return;
+      continue;
     }
     
     for(filter of filters)
@@ -785,8 +784,9 @@ claim_duplicates = function()
         $(nextRow).find(".btn").click();
         $(nextRow).find(".btn").removeAttr("href"); //Disables the button so it can't be claimed multiple times
         
-        console.log(row.textContent);
-        console.log(nextRow.textContent);
+        filter.reduce_time_left(time);
+        update_filters();
+        break;
       }
     }
   }
