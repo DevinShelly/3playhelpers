@@ -620,33 +620,7 @@ $("body").keydown(function(e) {
 $("body").keydown(function(e){
   if(should_capitalize_hyphenated_words && e.shiftKey && !e.ctrlKey && !e.altKey && e.which == 190)
   {
-    words = scope().cell.words;
-    hyphenated_words = words.split("-");
-    if (hyphenated_words.length < 2 || (words.startsWith("--") && words.slice(2).indexOf("-") == -1))
-    {
-      return;
-    }
-    for (i in hyphenated_words)
-    {
-      if (hyphenated_words[i].toUpperCase()[0] != hyphenated_words[i][0] && hyphenated_words[i].length > 0)
-      {
-        console.log(hyphenated_words[i])
-        hyphenated_words[i] = hyphenated_words[i][0].toUpperCase() + hyphenated_words[i].slice(1);
-        console.log(hyphenated_words);
-        scope().cell.setWords(words.toLowerCase()[0] + hyphenated_words.join("-").slice(1));
-        scope().$apply();
-        e.stopPropagation();
-        e.preventDefault();
-        return;
-      }
-    }
-    newWords = words.toUpperCase()[0] + words.toLowerCase().slice(1);
-    if(words.startsWith("--"))
-    {
-      newWords = "--" + words.toUpperCase()[2] + words.toLowerCase().slice(3);
-    }
-    scope().cell.setWords(newWords);
-    
+    capitalize_hyphenated_words(e);
   }
 });
 
@@ -684,8 +658,6 @@ formatSong = function(e) {
   scope().cell.setWords(music.replace(", ]", "]").toUpperCase());
   scope().$apply();
   e.preventDefault();
-  console.log(title);
-  console.log(singer);
 }
 
 splitHyphen = function() {
@@ -693,6 +665,32 @@ splitHyphen = function() {
     scope().cell.setWords(scope().cell.words.replace("-", " "));
     scope().$apply();
   }
+}
+capitalize_hyphenated_words = function(e){
+  words = scope().cell.words;
+  hyphenated_words = words.split("-");
+  if (hyphenated_words.length < 2 || (words.startsWith("--") && words.slice(2).indexOf("-") == -1))
+  {
+    return;
+  }
+  for (i in hyphenated_words)
+  {
+    if (hyphenated_words[i].toUpperCase()[0] != hyphenated_words[i][0] && hyphenated_words[i].length > 0)
+    {
+      hyphenated_words[i] = hyphenated_words[i][0].toUpperCase() + hyphenated_words[i].slice(1);
+      scope().cell.setWords(hyphenated_words.join("-"));
+      scope().$apply();
+      e.stopPropagation();
+      e.preventDefault();
+      return;
+    }
+  }
+  newWords = words.toUpperCase()[0] + words.toLowerCase().slice(1);
+  if(words.startsWith("--"))
+  {
+    newWords = "--" + words.toUpperCase()[2] + words.toLowerCase().slice(3);
+  }
+  scope().cell.setWords(newWords);
 }
 
 loadSpeakerIDs = function() {
