@@ -15,9 +15,9 @@ should_hide_uniques = JSON.parse(Cookies.get('should_hide_uniques') || "false");
 sort_by_duration = true;
 max_times_refreshed = 25;
 
-refresh_rotation = //[["Rate (lowest first)", function(){select_nonfavorites()}],
-//["Rate (highest first)", function(){deselect_nonfavorites()}], 
-[["Duration (longest first)", function(){deselect_nonfavorites()}]];
+refresh_rotation = [["Rate (lowest first)", function(){select_nonfavorites()}],
+["Rate (highest first)", function(){deselect_nonfavorites()}],
+["Duration (longest first)", function(){}]];
 
 observe_market_container = function(mutationsList, observer) 
 {
@@ -100,7 +100,7 @@ parse_deadline = function (deadline)
 parse_duration = function(duration)
 {
   //////console.log(3);
-  return parseInt(duration[0])*60 + parseInt(duration[1]);
+  return parseFloat(duration[0])*60 + parseFloat(duration[1]) + parseFloat(duration[2])/60;
 }
 
 const max_base_rate = "max_base_rate";
@@ -202,7 +202,7 @@ class AutoClaimFilter {
   
   time_left_passes(duration)
   {
-    var passes =  parseInt(this.params[minutes_left_to_claim]) > duration;
+    var passes =  parseFloat(this.params[minutes_left_to_claim]) > duration;
     if (!passes)
     {
       //////console.log("time_left " + duration);
@@ -265,6 +265,7 @@ class AutoClaimFilter {
     var tds = $(row).find('td');
     var duration = parse_duration(tds.eq(3).text().split(":"));
     this.params[minutes_left_to_claim] -= duration;
+    
   }
   
   toString()
@@ -366,18 +367,18 @@ create_autoclaim_row = function()
     <input type="text" name="projects">
 </label>
         <label>Rate: 
-    <input type="text" name="rate" style="max-width:40px">
+    <input type="text" name="rate" style="max-width:40px" value = "0">
 </label>
 <label>Bonus: 
-    <input type="text" name="bonus" style="max-width:40px"></label>
+    <input type="text" name="bonus" style="max-width:40px" value = "0"></label>
 <label>Duration: 
-    <input type="text" name="duration" style="max-width:40px"></label>
+    <input type="text" name="duration" style="max-width:40px" value = "0"></label>
 <label>Deadline: 
-    <input type="text" name="deadline" style="max-width:60px"></label>
+    <input type="text" name="deadline" style="max-width:60px" value = "0"></label>
 <label>Ratio: 
-    <input type="text" name="ratio" style="max-width:40px"></label>
+    <input type="text" name="ratio" style="max-width:40px" value = "0"></label>
 <label>Minutes: 
-    <input type="text" name="minutes" style="max-width:40px"></label>
+    <input type="text" name="minutes" style="max-width:40px" value = "0.0"></label>
     <label>Duplicates:<input type="checkbox" name="duplicates" style="max-width:40px"></label>
 <input type="button" name="delete" value="Delete" onclick="delete_autoclaim(this)"></button>
 </div>`;
@@ -447,7 +448,7 @@ update_filters = function()
     inputs[3].value = filter.params[min_duration_in_mins];
     inputs[4].value = filter.params[min_deadline_in_mins];
     inputs[5].value = filter.params[min_bonus_ratio];
-    inputs[6].value = filter.params[minutes_left_to_claim];
+    inputs[6].value = parseFloat(filter.params[minutes_left_to_claim]).toFixed(1);
     inputs[7].checked = filter.params[duplicates_only];
   }
 }
@@ -764,6 +765,10 @@ claim_duplicates = function()
     name = $(row).children()[0].textContent.split("\n").filter(function(val){return val.length > 0})[1].split(" | ")[1];
     name = name.split(") ")[1] ? name.split(") ")[1] : name;
     nextName = $(nextRow).children()[0].textContent.split("\n").filter(function(val){return val.length > 0})[1].split(" | ")[1];
+    if(!nextName)
+    {
+      console.log(nextRow.textContent);
+    }
     nextName = nextName.split(") ")[1] ? nextName.split(") ")[1] : nextName;
     
     id = $(row).children()[0].textContent.split("\n").filter(function(val){return val.length > 0})[1].split(" | ")[0];
@@ -784,7 +789,7 @@ claim_duplicates = function()
         $(nextRow).find(".btn").click();
         $(nextRow).find(".btn").removeAttr("href"); //Disables the button so it can't be claimed multiple times
         
-        filter.reduce_time_left(time);
+        filter.reduce_time_left(row);
         update_filters();
         break;
       }
@@ -815,6 +820,23 @@ if(document.URL.startsWith("https://jobs.3playmedia.com/available_jobs"))
   setInterval(update_autoclaim_titles, 1000);
 }
 
+save_sort = function()
+{
+  Cookies.set("sort_by", $("#sort_by").val());
+}
 
+if (document.URL.startsWith("https://jobs.3playmedia.com/assigned_jobs"))
+{
+  $("#sort_by").parent().after("<div class = 'pull-right' style = 'margin-right:5px'><button class = 'btn' id = 'save_sort'>Save Sort</button></div>");
+  $("#save_sort").click(save_sort);
+  if(Cookies.get("sort_by"))
+  {
+    $("#sort_by").val(Cookies.get("sort_by")).trigger("change");
+  }
+  else
+  {
+    save_sort();
+  }
+}
 
   
