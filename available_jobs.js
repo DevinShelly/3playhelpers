@@ -825,6 +825,8 @@ save_sort = function()
   Cookies.set("sort_by", $("#sort_by").val());
 }
 
+setInterval(function(){$(".clickable_row td").filter(function(){return $(this).index() <9}).removeClass("no-click no_follow")}, 200);
+
 if (document.URL.startsWith("https://jobs.3playmedia.com/assigned_jobs"))
 {
   $("#sort_by").parent().after("<div class = 'pull-right' style = 'margin-right:5px'><button class = 'btn' id = 'save_sort'>Save Sort</button></div>");
@@ -838,5 +840,7 @@ if (document.URL.startsWith("https://jobs.3playmedia.com/assigned_jobs"))
     save_sort();
   }
 }
+
+
 
   
