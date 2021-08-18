@@ -364,6 +364,25 @@ $("body").keydown(function(e)
   }
 });
 
+controlsHidden = false;
+$("body").keydown(function(e)
+{
+  if(e.ctrlKey && e.shiftKey && e.which == 72)
+  {
+    if (controlsHidden)
+    {
+      $(".controls-container").show();
+      controlsHidden = false;
+    }
+    else
+    {
+      $(".controls-container").hide();
+      controlsHidden = true;
+    }
+  }
+});
+
+
 $("body").keydown(function(e)
 {
   if (e.ctrlKey && e.shiftKey && e.which == 219)
@@ -1117,7 +1136,7 @@ checkForPauses = function(){
     upcoming = parseInt($(this).attr("timestamp")) > current_timestamp;
     return text.trim().length>0 && upcoming;
   }).eq(0);
-  next_word_timestamp = next_word ? parseInt(next_word.attr("timestamp")) : current_timestamp;
+  next_word_timestamp = next_word.length ? parseInt(next_word.attr("timestamp")) : current_timestamp;
   if(autospeedup && current_text.length == 0 && Date.now() - previousSpace > 1000 && (next_word_timestamp - current_timestamp > 4000 || !next_word_timestamp))
   {
     setSpeed(8.0, false);
