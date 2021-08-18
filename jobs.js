@@ -1131,12 +1131,16 @@ checkForPauses = function(){
   }
   current_text = $(".video-highlighted").text().trim();
   current_timestamp = parseInt($(".video-highlighted").attr("timestamp"));
-  next_word = $(".active-cell").filter(function(index){
+  next_word = $("[timestamp]").filter(function(index){
     text = $(this).text();
     upcoming = parseInt($(this).attr("timestamp")) > current_timestamp;
     return text.trim().length>0 && upcoming;
   }).eq(0);
-  next_word_timestamp = next_word.length ? parseInt(next_word.attr("timestamp")) : current_timestamp;
+  if (next_word.length == 0)
+  {
+    next_word = $("[timestamp]").last();
+  }
+  next_word_timestamp = parseInt(next_word.attr("timestamp"));
   if(autospeedup && current_text.length == 0 && Date.now() - previousSpace > 1000 && (next_word_timestamp - current_timestamp > 4000 || !next_word_timestamp))
   {
     setSpeed(8.0, false);
@@ -1146,8 +1150,6 @@ checkForPauses = function(){
     setSpeed(previousSpeed);
     
   }
-  //console.log(previousSpeed);
-  //console.log(speed().val());
 }
 
 updateFile = function(id, new_name = null, new_timestamp = null)
