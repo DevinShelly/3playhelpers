@@ -14,10 +14,11 @@ times_refreshed = 0;
 should_hide_uniques = JSON.parse(Cookies.get('should_hide_uniques') || "false");
 sort_by_duration = true;
 max_times_refreshed = 25;
+should_save_sort = true;
 
 refresh_rotation = [["Rate (lowest first)", function(){select_nonfavorites()}],
-["Rate (highest first)", function(){deselect_nonfavorites()}],
-["Duration (longest first)", function(){}]];
+["Rate (highest first)", function(){deselect_nonfavorites(3)}],
+["Duration (longest first)", function(){go_to_next_page()}]];
 
 observe_market_container = function(mutationsList, observer) 
 {
@@ -103,6 +104,7 @@ parse_duration = function(duration)
   return parseFloat(duration[0])*60 + parseFloat(duration[1]) + parseFloat(duration[2])/60;
 }
 
+const min_base_rate = "min_base_rate";
 const max_base_rate = "max_base_rate";
 const min_bonus_rate = "min_bonus_rate";
 const min_duration_in_mins = "min_duration_in_mins";
@@ -129,8 +131,9 @@ class AutoClaimFilter {
   
   base_passes(rate)
   {
-    var passes = (rate <= parseFloat(this.params[max_base_rate]) && parseFloat(this.params[max_base_rate]) < 1.79)   || (rate > 1.79 && parseFloat(this.params[max_base_rate]) > 1.79);
-    return passes;
+    var min_passes = rate >= parseFloat(this.params[min_base_rate]);
+    var max_passes = rate <= parseFloat(this.params[max_base_rate]);
+    return min_passes && max_passes;
     
   }
   
@@ -222,17 +225,6 @@ class AutoClaimFilter {
   
   should_claim_row(row, checking_duplicates = false)
   {
-    // //////console.log(4);
-    
-    // if (this.params[projects] == ["DUPLICATES"])
-    // {
-    //   previously_claimed_files = JSON.parse(localStorage.getItems("previously_claimed_files"));
-    //   if (previously_claimed_files.indexOf(name_duration_pair(row)))
-    //   {
-    //     return true;
-    //   }
-    // }
-    
     var tds = $(row).find('td');
     var project = tds.eq(0).text();
     var base = parseFloat(tds.eq(4).text().substring(1));
@@ -266,14 +258,6 @@ class AutoClaimFilter {
     var duration = parse_duration(tds.eq(3).text().split(":"));
     this.params[minutes_left_to_claim] -= duration;
     
-  }
-  
-  toString()
-  {
-    return "base: " + this.max_base_rate.toString() + " bonus: " + this.min_bonus_rate.toString() + 
-    " bonus_ratio: " + this.min_bonus_ratio.toString() +" duration: " + this.min_duration_in_mins.toString() + 
-    " deadline: " + this.min_deadline_in_mins.toString() + " project: " + this.project_name + 
-    " minutes left: " + this.minutes_left_to_claim.toString();
   }
 }
 
@@ -324,8 +308,6 @@ parse_row = function()
       $(this).find(".btn").click();
       $(this).find(".btn").removeAttr("href"); //Disables the button so it can't be claimed multiple times
       market_observer.observe(this, config);
-      //////console.log("Claiming:" + $(this).text());
-      //////console.log(filter.params);
       clearTimeout(refresh_id);
       refresh_id = setTimeout(refresh_market, 500);
       return;
@@ -367,7 +349,7 @@ create_autoclaim_row = function()
     <input type="text" name="projects">
 </label>
         <label>Rate: 
-    <input type="text" name="rate" style="max-width:40px" value = "0">
+    <input type="text" name="rate" style="max-width:60px" value = "0:0">
 </label>
 <label>Bonus: 
     <input type="text" name="bonus" style="max-width:40px" value = "0"></label>
@@ -380,7 +362,7 @@ create_autoclaim_row = function()
 <label>Minutes: 
     <input type="text" name="minutes" style="max-width:40px" value = "0.0"></label>
     <label>Duplicates:<input type="checkbox" name="duplicates" style="max-width:40px"></label>
-<input type="button" name="delete" value="Delete" onclick="delete_autoclaim(this)"></button>
+<input type="button" class = "btn" name="delete" value="Delete" onclick="delete_autoclaim(this)"></button>
 </div>`;
   $("#autoclaim_filters").append(row_html);
   $("#autoclaim_filters label input").change(filters_changed);
@@ -425,8 +407,15 @@ filters_changed = function()
   filters =[];
   $(".autoclaim_row").not(".autoclaim_header").each(function(index){
     var inputs = $(this).find("input");
-    var params = {projects:inputs[0].value.split("|"), max_base_rate:inputs[1].value, min_bonus_rate:inputs[2].value, min_duration_in_mins:inputs[3].value, 
-    min_deadline_in_mins:inputs[4].value, min_bonus_ratio:inputs[5].value, minutes_left_to_claim:inputs[6].value, duplicates_only:inputs[7].checked};
+    var params = {projects:inputs[0].value.split("|"), 
+      min_base_rate:inputs[1].value.split(":")[0],
+      max_base_rate:inputs[1].value.split(":")[1], 
+      min_bonus_rate:inputs[2].value, 
+      min_duration_in_mins:inputs[3].value, 
+      min_deadline_in_mins:inputs[4].value, 
+      min_bonus_ratio:inputs[5].value, 
+      minutes_left_to_claim:inputs[6].value, 
+      duplicates_only:inputs[7].checked};
     filters.push(new AutoClaimFilter(params));
     
   });
@@ -443,7 +432,7 @@ update_filters = function()
     var row = $(".autoclaim_row").not(".autoclaim_header").last()[0];
     var inputs = $(row).find("input");
     inputs[0].value = filter.params[projects].join("|");
-    inputs[1].value = filter.params[max_base_rate];
+    inputs[1].value = filter.params[min_base_rate] + ":" + filter.params[max_base_rate];
     inputs[2].value = filter.params[min_bonus_rate];
     inputs[3].value = filter.params[min_duration_in_mins];
     inputs[4].value = filter.params[min_deadline_in_mins];
@@ -637,7 +626,6 @@ if (window.location.href === "https://jobs.3playmedia.com/pay_stubs")
   var year_elapsed = (new Date()-jan1)/(dec31-jan1);
   var est_earnings = ytd_earnings/year_elapsed;
   $("h1").after("<br><h5>Year to Date</h5><h1>$" + ytd_earnings.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + "</h1>" + "<br><h5>Estimated Full Year Earnings</h5><h1>$" +est_earnings.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + "</h1>"); 
-  
 }
 
 setInterval(updatePay, 100);
@@ -666,7 +654,7 @@ $("<style>")
     )
     .appendTo("head");
 
-deselect_nonfavorites = function()
+deselect_nonfavorites = function(num_favorites)
 {
   if(sort_by_duration && should_autorefresh)
   {
@@ -674,7 +662,8 @@ deselect_nonfavorites = function()
     //console.log(Date.now() - last_refresh);
     last_refresh = Date.now();
     $("#project-filter-actions div").eq(1).click();
-    $(".project_filter").slice(0, 3).prop('checked', true);
+    $(".project_filter").slice(0, 3).prop('checked', false);
+    $(".project_filter").slice(0, num_favorites).prop('checked', true);
     $("#project-filter-actions").siblings("button").click();
   }
 }
@@ -688,6 +677,27 @@ select_nonfavorites = function()
     last_refresh = Date.now();
     $(".project_filter").prop('checked', true);
     $("#project-filter-actions").siblings("button").click();
+  }
+}
+
+current_page = null;
+go_to_next_page = function()
+{
+  console.log("going to next page");
+  if($(".pagination li").last().hasClass("disabled") || $(".clickable_row").last().text().indexOf("00:00:") != -1)
+  {
+    should_autorefresh = true;
+    current_page = null;
+    return;
+  }
+  
+  should_autorefresh = false;
+  setTimeout(go_to_next_page, 100);
+  
+  if(current_page != $(".pagination .active").children().last().text())
+  {
+    current_page = $(".pagination .active").children().last().text();
+    $(".pagination li").last().children().click();
   }
 }
 
@@ -829,9 +839,8 @@ setInterval(function(){$(".clickable_row td").filter(function(){return $(this).i
 
 if (document.URL.startsWith("https://jobs.3playmedia.com/assigned_jobs"))
 {
-  $("#sort_by").parent().after("<div class = 'pull-right' style = 'margin-right:5px'><button class = 'btn' id = 'save_sort'>Save Sort</button></div>");
-  $("#save_sort").click(save_sort);
-  if(Cookies.get("sort_by"))
+  $("#sort_by").change(save_sort);
+  if(Cookies.get("sort_by") && should_save_sort)
   {
     $("#sort_by").val(Cookies.get("sort_by")).trigger("change");
   }
