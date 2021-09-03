@@ -98,10 +98,17 @@ parse_deadline = function (deadline)
   return  Date.parse(deadline);
 }
 
-parse_duration = function(duration)
+parse_duration = function(row)
 {
-  //////console.log(3);
+  var tds = $(row).find('td');
+  duration = tds.eq(3).text().split(":")
   return parseFloat(duration[0])*60 + parseFloat(duration[1]) + parseFloat(duration[2])/60;
+}
+
+parse_project = function(row)
+{
+  var tds = $(row).find('td');
+  return tds.eq(0).text();
 }
 
 const min_base_rate = "min_base_rate";
@@ -223,14 +230,14 @@ class AutoClaimFilter {
     return passes;
   }
   
-  should_claim_row(row, checking_duplicates = false)
+  should_claim_row(row)
   {
     var tds = $(row).find('td');
-    var project = tds.eq(0).text();
+    var project = parse_project(row);
     var base = parseFloat(tds.eq(4).text().substring(1));
     var bonus = parseFloat(tds.eq(5).text().trim().substring(1));
     bonus = bonus ? bonus : 0.0;
-    var duration = parse_duration(tds.eq(3).text().split(":"));
+    var duration = parse_duration(row);
     var deadline = parse_deadline(tds.eq(8).text());
     
     var base_passes = this.base_passes(base);
@@ -239,23 +246,16 @@ class AutoClaimFilter {
     var bonus_ratio_passes = this.bonus_ratio_passes(bonus/base); //bonus / rate >= parseFloat(this.params[min_bonus_ratio]);
     var time_left_passes = this.time_left_passes(duration); //parseInt(this.params[minutes_left_to_claim]) > duration;
     var duration_passes = this.duration_passes(duration); //parseInt(this.params[min_duration_in_mins]) <= duration;
-    var duplicates_passes = !(this.params[duplicates_only]) || checking_duplicates;
     
     var in_project = this.in_project(this.params[projects].filter(function(string){return string[0] != "-"}), project);
     var not_in_project = this.not_in_project(this.params[projects].filter(function(string){return string[0] == "-"}), project);
     
-    return duration_passes && base_passes && bonus_passes && deadline_passes && bonus_ratio_passes && duplicates_passes && in_project  && time_left_passes && !not_in_project;
-  }
-  
-  should_claim_rows(row1, row2)
-  {
-    return this.should_claim_row(row1, this.params[duplicates_only]) && this.should_claim_row(row2, this.params[duplicates_only]);
+    return duration_passes && base_passes && bonus_passes && deadline_passes && bonus_ratio_passes && in_project  && time_left_passes && !not_in_project;
   }
   
   reduce_time_left(row)
   {
-    var tds = $(row).find('td');
-    var duration = parse_duration(tds.eq(3).text().split(":"));
+    var duration = parse_duration(row);
     this.params[minutes_left_to_claim] -= duration;
     
   }
@@ -282,7 +282,7 @@ file_was_claimed = function(row)
   for (var f in filters)
   {
     var filter = filters[f];
-    if(filter.should_claim_row(row))
+    if(!filter.params[duplicates_only] && filter.should_claim_row(row))
     {
       //////console.log("Filter claimed file:" + row.textContent + " " + JSON.stringify(filter.params));
       filter.reduce_time_left(row);
@@ -303,7 +303,7 @@ parse_row = function()
 {
   for (var filter of filters)
   {
-    if(filter.should_claim_row(this))
+    if(!filter.params[duplicates_only] && filter.should_claim_row(this))
     {
       $(this).find(".btn").click();
       $(this).find(".btn").removeAttr("href"); //Disables the button so it can't be claimed multiple times
@@ -516,6 +516,8 @@ enable_autorefresh = function()
   should_autorefresh = true;
   $(".auto-refresh").text("Stop Autorefreshing");
   $(".auto-refresh").click(disable_autorefresh);
+  should_autorefresh = true;
+  current_page = null;
 }
 
 disable_autorefresh = function()
@@ -524,6 +526,7 @@ disable_autorefresh = function()
   $('.auto-refresh').click(enable_autorefresh);
   autostart = false;
   should_autorefresh = false;
+  current_page = null;
 }
 
 enable_autoclaim = function()
@@ -681,17 +684,18 @@ select_nonfavorites = function()
 }
 
 current_page = null;
+is_loading_next_page = false;
+
 go_to_next_page = function()
 {
-  console.log("going to next page");
-  if($(".pagination li").last().hasClass("disabled") || $(".clickable_row").last().text().indexOf("00:00:") != -1)
+  if(!should_autorefresh || $(".pagination li").last().hasClass("disabled") || $(".clickable_row").last().text().indexOf("00:00:") != -1)
   {
-    should_autorefresh = true;
     current_page = null;
+    is_loading_next_page = false;
     return;
   }
   
-  should_autorefresh = false;
+  is_loading_next_page = true;
   setTimeout(go_to_next_page, 100);
   
   if(current_page != $(".pagination .active").children().last().text())
@@ -703,7 +707,7 @@ go_to_next_page = function()
 
 switch_filter = function()
 {
-  if(!should_autorefresh)
+  if(!should_autorefresh || is_loading_next_page)
   {
     return;
   }
@@ -784,14 +788,14 @@ claim_duplicates = function()
     id = $(row).children()[0].textContent.split("\n").filter(function(val){return val.length > 0})[1].split(" | ")[0];
     nextID = $(nextRow).children()[0].textContent.split("\n").filter(function(val){return val.length > 0})[1].split(" | ")[1];
     
-    if (id == nextID || name != nextName)
+    if (id == nextID || name != nextName || time != nextTime)
     {
       continue;
     }
     
     for(filter of filters)
     {
-      if(filter.should_claim_rows(row, nextRow))
+      if(filter.params[duplicates_only] && filter.should_claim_row(row) && filter.should_claim_row(nextRow))
       {
         $(row).find(".btn").click();
         $(row).find(".btn").removeAttr("href"); //Disables the button so it can't be claimed multiple times
