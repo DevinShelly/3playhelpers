@@ -295,6 +295,7 @@ file_was_claimed = function(row)
 last_refresh = Date.now();
 refresh_market = function()
 {
+  console.log("Refreshing market");
   $(".icon-refresh").eq(0).parent().click();
 }
 
@@ -688,7 +689,8 @@ is_loading_next_page = false;
 
 go_to_next_page = function()
 {
-  if(!should_autorefresh || $(".pagination li").last().hasClass("disabled") || $(".clickable_row").last().text().indexOf("00:00:") != -1)
+  console.log("going to next page");
+  if(!should_autorefresh || $(".pagination li").length == 0 || $(".pagination li").last().hasClass("disabled") || $(".clickable_row").last().text().indexOf("00:00:") != -1)
   {
     current_page = null;
     is_loading_next_page = false;
@@ -707,11 +709,13 @@ go_to_next_page = function()
 
 switch_filter = function()
 {
+  console.log
   if(!should_autorefresh || is_loading_next_page)
   {
     return;
   }
   
+  console.log("Switching filter");
   last_refresh = Date.now();
   if($("#sort_by").length == 0)
   {
