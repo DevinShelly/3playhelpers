@@ -5,7 +5,7 @@
 
 autorefresh_delay = 5000;
 autorefresh_id = null;
-should_autorefresh = true;
+should_autorefresh = false;
 should_autoclaim = false;
 should_autoreload = false;
 autoclaim_duration = 40;
@@ -16,7 +16,8 @@ sort_by_duration = true;
 max_times_refreshed = 25;
 should_save_sort = true;
 
-refresh_rotation = [["Rate (lowest first)", function(){select_nonfavorites()}],
+refresh_rotation = [["Rate (lowest first)", function(){select_nonfavorites()}],/*
+["Bonus (highest first)", function(){}],*/
 ["Rate (highest first)", function(){deselect_nonfavorites(3)}],
 ["Duration (longest first)", function(){go_to_next_page()}]];
 
@@ -159,7 +160,7 @@ class AutoClaimFilter {
     var minimumDeadline = parseInt(this.params[min_deadline_in_mins]) < 60*24*7 ? 
                           (new Date()).getTime() + parseInt(this.params[min_deadline_in_mins]) * 60 * 1000 :
                           parseInt(this.params[min_deadline_in_mins]);
-    var passes = deadline >= minimumDeadline;
+    var passes = deadline >= minimumDeadline || parseInt(this.params[min_deadline_in_mins]) < 0;
     if (!passes)
     {
       //////console.log("deadline " + deadline);
@@ -378,6 +379,7 @@ save_autoclaim = function()
     params.push(filter.params);
   }
   Cookies.set("autoclaim", params, {expires: 365});
+  Cookies.set("autoclaim_backup", params, {expires: 365});
 }
 
 update_autoclaim_titles = function()
@@ -780,17 +782,17 @@ claim_duplicates = function()
     time = $(row).children()[3].textContent;
     nextTime = $(nextRow).children()[3].textContent;
     
-    name = $(row).children()[0].textContent.split("\n").filter(function(val){return val.length > 0})[1].split(" | ")[1];
+    name = $(row).children()[0].textContent.split("\n").filter(function(val){return val.split(" | ").length > 1})[0].split(" | ")[1];
     name = name.split(") ")[1] ? name.split(") ")[1] : name;
-    nextName = $(nextRow).children()[0].textContent.split("\n").filter(function(val){return val.length > 0})[1].split(" | ")[1];
+    nextName = $(nextRow).children()[0].textContent.split("\n").filter(function(val){return val.split(" | ").length > 1})[0].split(" | ")[1];
     if(!nextName)
     {
       console.log(nextRow.textContent);
     }
     nextName = nextName.split(") ")[1] ? nextName.split(") ")[1] : nextName;
     
-    id = $(row).children()[0].textContent.split("\n").filter(function(val){return val.length > 0})[1].split(" | ")[0];
-    nextID = $(nextRow).children()[0].textContent.split("\n").filter(function(val){return val.length > 0})[1].split(" | ")[1];
+    id = $(row).children()[0].textContent.split("\n").filter(function(val){return val.split(" | ").length > 1})[0].split(" | ")[0];
+    nextID = $(nextRow).children()[0].textContent.split("\n").filter(function(val){return val.split(" | ").length > 1})[0].split(" | ")[1];
     
     if (id == nextID || name != nextName || time != nextTime)
     {
