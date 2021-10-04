@@ -133,7 +133,6 @@ class AutoClaimFilter {
     if (this.params[min_deadline_in_mins][0] == "+")
     {
       this.params[min_deadline_in_mins] = Date.now() + parseFloat(this.params[min_deadline_in_mins].replace("+", ""))*1000*60*60;
-      save_autoclaim();
     }
   }
   
@@ -378,8 +377,8 @@ save_autoclaim = function()
   {
     params.push(filter.params);
   }
-  Cookies.set("autoclaim", params, {expires: 365});
-  Cookies.set("autoclaim_backup", params, {expires: 365});
+  localStorage.setItem("autoclaim", JSON.stringify(params), {expires: 365});
+  localStorage.setItem("autoclaim_backup", JSON.stringify(params), {expires: 365});
 }
 
 update_autoclaim_titles = function()
@@ -400,7 +399,7 @@ update_autoclaim_titles = function()
 reset_autoclaim = function()
 {
   //////console.log(10);
-  filters = Cookies.getJSON("autoclaim").map(function(p) {return new AutoClaimFilter(p)});
+  filters = JSON.parse(localStorage.getItem("autoclaim")).map(function(p) {return new AutoClaimFilter(p)});
   update_filters();
 }
 
@@ -530,6 +529,7 @@ disable_autorefresh = function()
   autostart = false;
   should_autorefresh = false;
   current_page = null;
+  clearTimeout(next_filter_function_id);
 }
 
 enable_autoclaim = function()
@@ -709,6 +709,7 @@ go_to_next_page = function()
   }
 }
 
+next_filter_function_id = null;
 switch_filter = function()
 {
   console.log
@@ -736,7 +737,7 @@ switch_filter = function()
         next_filter_name = refresh_rotation[next_index][0];
         next_filter_function = refresh_rotation[next_index][1];
         $("#sort_by").val(next_filter_name).trigger("change");
-        setTimeout(next_filter_function, autorefresh_delay/2);
+        next_filter_function_id = setTimeout(next_filter_function, autorefresh_delay/2);
         break;
       }
     }
