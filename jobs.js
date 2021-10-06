@@ -604,7 +604,8 @@ $("body").keydown(function(e) { //Automatically copies the current cell contents
   {
     if (Date.now() - lastGoogleTap < 2000)
     {
-      $("#google").val($(".user-selected").text().trim());
+      scope().cell.setFlagged(false);
+      $("#google").val(scope().cell.words);
       $("#google").parent().submit();
     }
     lastGoogleTap = Date.now();
@@ -752,6 +753,10 @@ parseRate = function() {
   parts = parseDuration().split(":");
   minutes = parseFloat(parts[0]*60) + parseFloat(parts[1]) + parseFloat(parts[2])/60;
   return parsePay()/minutes;
+}
+
+parseProjectName = function() {
+   return $(".tab-pane:eq(6) td.ng-binding:eq(7)").text().trim();
 }
 
 getFilesData = function() {
@@ -1083,7 +1088,10 @@ onFileLoad = function()
   }
   //console.log("file exists");
   
-  if(scope().cell.words == "[NO SPEECH]" || parseRate() > 1.79)
+  total_cells = $("span[timestamp]").length;
+  non_empty_cells = $("span[timestamp]").filter(function() { return ($(this).text().trim().length > 0) }).length;
+  
+  if(parseFloat(non_empty_cells)/parseFloat(total_cells) < 0.1)
   {
     previousSpeed = 8.0;
     finished = 1.0;
