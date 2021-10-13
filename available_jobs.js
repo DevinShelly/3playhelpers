@@ -184,12 +184,22 @@ class AutoClaimFilter {
     {
       return true;
     }
-    for (i in in_project)
+    for (i of in_project)
     {
-      if (project.indexOf(in_project[i]) != -1)
+      let i_split = i.split("&&");
+      let passes = true;
+      for(let j of i_split)
+      {
+        if(project.indexOf(j) == -1)
+        {
+          passes = false;
+        }
+      }
+      if (passes)
       {
         return true;
       }
+      
     }
     //////console.log("in project " + in_project);
     //////console.log("project" + project);
