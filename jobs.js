@@ -6,6 +6,8 @@ context_sensitive_macro_keys = [123, 192]; //these are the keycodes for backtick
 should_not_advance = false;
 autospeedup = true;
 should_capitalize_hyphenated_words = true;
+default_to_music = true;
+start_music_slow = false;
 
 // Read
 /**
@@ -158,8 +160,6 @@ setTimeout(function()
   });
 }, 5000);
 
-
-
 changeSpeed = function(changeBy, updatePrev = true)
 {
   setSpeed(parseFloat(speed().val()) + changeBy, updatePrev);
@@ -296,6 +296,24 @@ numberTriggered = function()
   }
 }
 
+saveWords = function()
+{
+  words_string = "words = JSON.parse(localStorage.getItem('words')) || {};";
+  words = JSON.parse(localStorage.getItem("words"));
+  for (key in words)
+  {
+    words_string = words_string + "words[`" + key + "`] = `" + words[key] + "`; "
+  }
+  words_string = words_string + "localStorage.setItem('words', JSON.stringify(words));";
+  navigator.clipboard.writeText(words_string);
+}
+
+loadWords = function()
+{
+  navigator.clipboard.readText().then(
+      clipText => eval(clipText));
+}
+
 macroTriggered = function(e) 
 {
   index = e.which > 57 ? e.which - 97 : e.which - 49;
@@ -328,6 +346,15 @@ macroTriggered = function(e)
   
   scope().cell.setWords(word);
   scope().$apply();
+  
+  if(word == "saveWords")
+  {
+    saveWords();
+  }
+  else if (word == "loadWords")
+  {
+    loadWords();
+  }
 
   if (e.which >= 122) 
   {
@@ -1000,8 +1027,36 @@ populateData = function(e, id, startingRange=null, endingRange=null)
   }
   scope().$apply();
   loadSpeakerIDs();
+  if ($(".panel:contains('Speaker Identification - None')").length)
+  {
+    removeSpeakerIDs();
+  }
 
   //setTimeout(checkadjacentwords, 5000);
+}
+
+removeSpeakerIDs = function() {
+  first_cells = $(".tp-transcript-paragraph span:first-child");
+  for (cell_span of first_cells)
+  {
+    cell_timestamp = cell_span.getAttribute("timestamp");
+    cell = transcript().getCell(cell_timestamp);
+    console.log(cell.speakerLabel);
+    if (cell.speakerLabel)
+    {
+      cell.setWords("");
+      next_cell_span = cell_span.nextElementSibling;
+      next_cell_timestamp = next_cell_span.getAttribute("timestamp");
+      next_cell = transcript().getCell(next_cell_timestamp);
+      paragraph = transcript().findCellParagraph(cell);
+      if(paragraph.index > 0)
+      {
+        transcript().removeParagraph(paragraph.paragraph);
+      }
+      transcript().makeNewParagraph(next_cell);
+    }
+  }
+  scope().$apply();
 }
 
 checkadjacentwords = function() {
@@ -1108,12 +1163,16 @@ onFileLoad = function()
 
   if (previousSpeed == 8.0) 
   {
-    words = "[MUSIC PLAYING]";
-    if ($(".panel:contains('Handle Instrumental Music Only - Return')").length) 
+    if(start_music_slow)
+    {
+      toggleSpeed();
+    }
+    words = default_to_music ? "[MUSIC PLAYING]" : "[NO AUDIO]";
+    if (default_to_music && $(".panel:contains('Handle Instrumental Music Only - Return')").length) 
     {
       words = "RETURN RETURN RETURN RETURN RETURN RETURN RETURN";
     }
-    else if ($(".panel:contains('Handle Instrumental Music Only - Generic Music Tags')").length == 0) 
+    else if (default_to_music && $(".panel:contains('Handle Instrumental Music Only - Generic Music Tags')").length == 0) 
     {
       words = "DESCRIPTIVE MUSIC TAGS";
     }
