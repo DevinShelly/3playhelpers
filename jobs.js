@@ -983,13 +983,14 @@ fixedData = function(fileData, currentData) {
   return output;
 }
 
-populateData = function(e, id, startingRange=null, endingRange=null)
+populateData = function(e, id, startingRange=null, endingRange=null, data = null)
 {
   idToLoad = id ? id : $("#duplicate_data").val();
-  console.log(idToLoad);
-  if (idToLoad == "blank") {
+  if (idToLoad == "blank" && !data) {
     return;
   }
+  
+  console.log(data);
   
   setSpeed(3.0);
   if(!startingRange)
@@ -1004,7 +1005,7 @@ populateData = function(e, id, startingRange=null, endingRange=null)
   emergencySaveContent = transcript().tpTranscriptSaveService.emergencySaveContent();
   //console.log(getContentData()[idToLoad]);
   //console.log(id);
-  unfixedData = idToLoad == parseID() ? getContentData()[idToLoad].original : getContentData()[idToLoad].edited;
+  unfixedData = idToLoad == parseID() ? getContentData()[idToLoad].original : data || getContentData()[idToLoad].edited;
   fileData = fixedData(unfixedData, emergencySaveContent);
 
   for (timestamp in fileData.words) 
@@ -1105,12 +1106,43 @@ shiftleft = function() {
   scope().$apply();
 }
 
+shiftAllLeft = function()
+{
+  timestamps = Object.keys(transcript().cellMap);
+  for(timestamp_index in timestamps)
+  {
+    cell = transcript().getCell(timestamps[timestamp_index]);
+    nextCell = transcript().getCell(timestamps[parseInt(timestamp_index)+1]);
+    if(!nextCell)
+    {
+      continue;
+    }
+    cell.setWords(nextCell.words);
+  }
+}
+
+shiftAllRight = function()
+{
+  timestamps = Object.keys(transcript().cellMap).reverse();
+  for(timestamp_index in timestamps)
+  {
+    cell = transcript().getCell(timestamps[timestamp_index]);
+    nextCell = transcript().getCell(timestamps[parseInt(timestamp_index)+1]);
+    if(!nextCell)
+    {
+      continue;
+    }
+    cell.setWords(nextCell.words);
+  }
+}
+
 offsetFile = function(id, offsetTime)
 {
-  offset = {edited:{words:{}, paragraphs:[]}};
   content_data = getContentData();
   original = content_data[id];
-  for(timestamp in original.edited.words)
+  
+  offset = {edited:{words:{}, paragraphs:[]}};
+  for(timestamp in data.words)
   {
     offset.edited.words[parseInt(timestamp) + offsetTime] = original.edited.words[timestamp];
   }
