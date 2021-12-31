@@ -856,6 +856,17 @@ save_sort = function()
   Cookies.set("sort_by", $("#sort_by").val());
 }
 
+save_old_file_contents = function()
+{
+  words = {};
+  $(".p3-transcript-main span").each(function(){words[this.getAttribute("m")] = this.textContent});
+  
+  first_spans = $(".p3-transcript-main span:first-child")
+  paragraphs = $.map(first_spans, function(e){return parseInt(e.getAttribute("m"))});
+  edited = {"words":words, "paragraphs":paragraphs};
+  console.log(JSON.stringify(edited));
+}
+
 setInterval(function(){$(".clickable_row td").filter(function(){return $(this).index() <9}).removeClass("no-click no_follow")}, 200);
 
 if (document.URL.startsWith("https://jobs.3playmedia.com/assigned_jobs"))
