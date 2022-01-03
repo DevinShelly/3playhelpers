@@ -15,6 +15,7 @@ should_hide_uniques = JSON.parse(Cookies.get('should_hide_uniques') || "false");
 sort_by_duration = true;
 max_times_refreshed = 25;
 should_save_sort = true;
+print_debugging = false;
 
 refresh_rotation = [["Rate (lowest first)", function(){select_nonfavorites()}],/*
 ["Bonus (highest first)", function(){}],*/
@@ -54,7 +55,6 @@ observe_market_container = function(mutationsList, observer)
         {
           file_was_claimed(node.parentNode.parentNode);
         }
-        
       }
     }
   }
@@ -93,7 +93,7 @@ parse_deadline = function (deadline)
     var newHours = parseInt(hours) + 12;
     deadline = deadline.split(",")[0] + ", " + newHours.toString() + ":" + minutes;
   }
-  deadline = deadline.split(",")[0] + ", 2021 " + deadline.split(", ")[1];
+  deadline = deadline.split(",")[0] + ", 2022 " + deadline.split(", ")[1];
   deadline = deadline.replace("  ", " ");
   //////console.log("parsed deadline " + deadline);
   return  Date.parse(deadline);
@@ -171,6 +171,7 @@ class AutoClaimFilter {
   bonus_ratio_passes(ratio)
   {
     var passes = ratio >= parseFloat(this.params[min_bonus_ratio]);
+    console.log(ratio);
     if (!passes)
     {
       //////console.log("ratio " + ratio);
@@ -260,6 +261,20 @@ class AutoClaimFilter {
     var in_project = this.in_project(this.params[projects].filter(function(string){return string[0] != "-"}), project);
     var not_in_project = this.not_in_project(this.params[projects].filter(function(string){return string[0] == "-"}), project);
     
+    if(print_debugging)
+    {
+      console.log({"base_passes":base_passes, 
+      "bonus_passes":bonus_passes,
+      "deadline_passes":deadline_passes,
+      "bonus_ratio_passes":bonus_ratio_passes,
+      "time_left_passes":time_left_passes,
+      "duration_passes":duration_passes,
+      "in_project":in_project,
+      "not_in_project":not_in_project,
+      "row":this.textContent
+      });
+    }
+    
     return duration_passes && base_passes && bonus_passes && deadline_passes && bonus_ratio_passes && in_project  && time_left_passes && !not_in_project;
   }
   
@@ -305,7 +320,6 @@ file_was_claimed = function(row)
 last_refresh = Date.now();
 refresh_market = function()
 {
-  console.log("Refreshing market");
   $(".icon-refresh").eq(0).parent().click();
 }
 
@@ -728,7 +742,6 @@ switch_filter = function()
     return;
   }
   
-  console.log("Switching filter");
   last_refresh = Date.now();
   if($("#sort_by").length == 0)
   {
