@@ -8,6 +8,7 @@ autospeedup = true;
 should_capitalize_hyphenated_words = true;
 default_to_music = true;
 start_music_slow = false;
+switch_to_low_quality = true;
 
 // Read
 /**
@@ -1158,14 +1159,31 @@ offsetFile = function(id, offsetTime)
 //This function fires on startup
 finished = 0;
 
+modal_dismissed = false;
 onFileLoad = function() 
 {
-  if (!$(".modal-footer button").click().length)
+  if (!modal_dismissed && !$(".modal-footer button").click().length)
   {
-    //console.log("No button");
     setTimeout(onFileLoad, 100);
     return;
   }
+  modal_dismissed = true;
+  
+  if(switch_to_low_quality)
+  {
+    for(i of $("#video-playback-dropdown li a"))
+    {
+      if(i.textContent == "Switch to Low Quality Stream" || i.textContent == "Switch to HTML5 Audio")
+      {
+        i.click();
+        switch_to_low_quality = false;
+        setTimeout(onFileLoad, 500);
+        return;
+      }
+    }
+  }
+  
+  console.log("Got here");
   
   //If this is the initial loading, save the file first
   if (!getFilesData()[parseID()] || !getContentData()[parseID()]) 
@@ -1263,4 +1281,3 @@ updateFile = function(id, new_name = null, new_timestamp = null)
 setInterval(checkForPauses, 100);
 
 onFileLoad();
-
