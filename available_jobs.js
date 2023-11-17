@@ -7,20 +7,20 @@ autorefresh_delay = 5000;
 autorefresh_id = null;
 should_autorefresh = false;
 should_autoclaim = false;
-should_autoreload = false;
 autoclaim_duration = 40;
 disable_autoclaim_id = null;
 times_refreshed = 0;
 should_hide_uniques = JSON.parse(Cookies.get('should_hide_uniques') || "false");
 sort_by_duration = true;
 max_times_refreshed = 25;
+should_autoreload = false;
 should_save_sort = true;
 print_debugging = false;
 
-refresh_rotation = [["Rate (lowest first)", function(){select_nonfavorites()}],/*
-["Bonus (highest first)", function(){}],*/
-["Rate (highest first)", function(){deselect_nonfavorites(3)}],
-["Duration (longest first)", function(){go_to_next_page()}]];
+refresh_rotation = [["Rate (lowest first)", function(){/*select_nonfavorites()*/}],
+//["Bonus (highest first)", function(){}],
+  ["Rate (highest first)", function(){}],
+  ["Deadline (latest first)", function(){}]];
 
 observe_market_container = function(mutationsList, observer) 
 {
@@ -93,7 +93,7 @@ parse_deadline = function (deadline)
     var newHours = parseInt(hours) + 12;
     deadline = deadline.split(",")[0] + ", " + newHours.toString() + ":" + minutes;
   }
-  deadline = deadline.split(",")[0] + ", 2022 " + deadline.split(", ")[1];
+  deadline = deadline.split(",")[0] + ", 2023 " + deadline.split(", ")[1];
   deadline = deadline.replace("  ", " ");
   //////console.log("parsed deadline " + deadline);
   return  Date.parse(deadline);
@@ -116,11 +116,23 @@ const min_base_rate = "min_base_rate";
 const max_base_rate = "max_base_rate";
 const min_bonus_rate = "min_bonus_rate";
 const min_duration_in_mins = "min_duration_in_mins";
-const min_deadline_in_mins = "min_deadline_in_mins";
+const max_duration_in_mins = "max_duration_in_mins";
+const min_deadline = "min_deadline";
 const projects = "projects";
 const min_bonus_ratio = "min_bonus_ratio";
 const minutes_left_to_claim = "minutes_left_to_claim";
 const duplicates_only = "duplicates_only";
+
+date_from_time = function(time)
+{
+  var date = new Date();
+  var hours = time.split(":")[0];
+  var minutes = time.split(":")[1];
+  date.setHours(hours);
+  date.setMinutes(minutes);
+  date.setSeconds(0);
+  return date;
+}
 
 class AutoClaimFilter {
   
@@ -130,10 +142,6 @@ class AutoClaimFilter {
     this.params[projects].filter(function(item, idx){
       return item.length>0;
     });
-    if (this.params[min_deadline_in_mins][0] == "+")
-    {
-      this.params[min_deadline_in_mins] = Date.now() + parseFloat(this.params[min_deadline_in_mins].replace("+", ""))*1000*60*60;
-    }
   }
   
   base_passes(rate)
@@ -156,16 +164,7 @@ class AutoClaimFilter {
   
   deadline_passes(deadline)
   {
-    var minimumDeadline = parseInt(this.params[min_deadline_in_mins]) < 60*24*7 ? 
-                          (new Date()).getTime() + parseInt(this.params[min_deadline_in_mins]) * 60 * 1000 :
-                          parseInt(this.params[min_deadline_in_mins]);
-    var passes = deadline >= minimumDeadline || parseInt(this.params[min_deadline_in_mins]) < 0;
-    if (!passes)
-    {
-      //////console.log("deadline " + deadline);
-      //////console.log("minimum deadline " + minimumDeadline);
-    }
-    return passes;
+    return deadline > date_from_time(this.params[min_deadline]);
   }
   
   bonus_ratio_passes(ratio)
@@ -187,6 +186,10 @@ class AutoClaimFilter {
     }
     for (i of in_project)
     {
+      if(i.length == 0)
+      {
+        continue;
+      }
       let i_split = i.split("&&");
       let passes = true;
       for(let j of i_split)
@@ -233,12 +236,9 @@ class AutoClaimFilter {
   
   duration_passes(duration)
   {
-    var passes =  parseInt(this.params[min_duration_in_mins]) <= duration;
-    if (!passes)
-    {
-      //////console.log("duration " + duration);
-    }
-    return passes;
+    var min_passes =  parseInt(this.params[min_duration_in_mins]) <= duration;
+    var max_passes = parseInt(this.params[max_duration_in_mins]) >= duration || !this.params[max_duration_in_mins];
+    return min_passes && max_passes;
   }
   
   should_claim_row(row)
@@ -409,14 +409,7 @@ update_autoclaim_titles = function()
 {
   $("input[name='deadline']").each(function()
   {
-    if(parseInt(this.value) > 100000)
-    {
-      $(this).attr("title",new Date(parseInt(this.value)).toLocaleString());
-    }
-    else
-    {
-      $(this).attr("title", "");
-    }
+    $(this).attr("title",date_from_time(this.value).toLocaleString());
   });
 }
 
@@ -437,8 +430,9 @@ filters_changed = function()
       min_base_rate:inputs[1].value.split(":")[0],
       max_base_rate:inputs[1].value.split(":")[1], 
       min_bonus_rate:inputs[2].value, 
-      min_duration_in_mins:inputs[3].value, 
-      min_deadline_in_mins:inputs[4].value, 
+      min_duration_in_mins:inputs[3].value.split(":")[0],
+      max_duration_in_mins:inputs[3].value.split(":")[1],
+      min_deadline:inputs[4].value, 
       min_bonus_ratio:inputs[5].value, 
       minutes_left_to_claim:inputs[6].value, 
       duplicates_only:inputs[7].checked};
@@ -461,7 +455,11 @@ update_filters = function()
     inputs[1].value = filter.params[min_base_rate] + ":" + filter.params[max_base_rate];
     inputs[2].value = filter.params[min_bonus_rate];
     inputs[3].value = filter.params[min_duration_in_mins];
-    inputs[4].value = filter.params[min_deadline_in_mins];
+    if(filter.params[max_duration_in_mins])
+    {
+      inputs[3].value = inputs[3].value + ":" + filter.params[max_duration_in_mins];
+    }
+    inputs[4].value = filter.params[min_deadline] || "0:00";
     inputs[5].value = filter.params[min_bonus_ratio];
     inputs[6].value = parseFloat(filter.params[minutes_left_to_claim]).toFixed(1);
     inputs[7].checked = filter.params[duplicates_only];
