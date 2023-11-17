@@ -1,6 +1,6 @@
 keypress_timeout = 1; //this is how long in minutes between keypresses/mouse movement before it stops counting you as working
 midnight_offset = 6; //this is when a new day starts for record keeping purposesin hours. 0 is midnight, 1 is 1 AM, -1 is 11 PM, etc
-previousSpeed = 2.0; //this sets the default speed you start a file at when you open it
+previousSpeed = [2]; //this sets the default speed you start a file at when you open it
 context_sensitive_macro_keys = [123, 192]; //these are the keycodes for backtick (`) and F12. These trigger a context sensitive macro  
                                           //for a different key, go to keycode.io, hit it, and then add it to the array
 should_not_advance = false;
@@ -8,7 +8,9 @@ autospeedup = true;
 should_capitalize_hyphenated_words = true;
 default_to_music = true;
 start_music_slow = false;
-switch_to_low_quality = true;
+switch_to_low_quality = false;
+multiple_speed_toggle = false;
+version = "v1.0.0";
 
 // Read
 /**
@@ -95,6 +97,10 @@ scope = function() {
   return angular.element($(".user-selected")).scope() || angular.element($(".active-cell")).scope();
 }
 
+nextScope = function() {
+  return angular.element($(".user-selected")[0].nextElementSibling).scope();
+}
+
 transcript = function() {
   return scope().cell.transcript;
 }
@@ -150,7 +156,7 @@ updateDisplay = function() {
   pay_rate = parsePay()/file_working_hours*percentage;
   pay_text = "Pay rate: $" + pay_rate.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
   speed_text = "Speed: " + speed().val();
-  $("#speed-display").text(speed_text + " | " + daily_text + " | " + file_text + " | " + pay_text);
+  $("#speed-display").text(speed_text + " | " + daily_text + " | " + file_text + " | " + pay_text + " | " + version);
 }
 
 setTimeout(function()
@@ -241,7 +247,7 @@ setMacro = function(word, isSpeaker, index) {
   macroWords = $("[ng-model='macroData.words']");
   macroSpeakers = $("[ng-click='ctrl.toggleMacroSpeakerLabel(macroData.id)']");
   macroWords[index].value = word;
-  $(macroWords[index]).trigger("input");
+  macroWords[index].dispatchEvent(new Event('input', {bubbles: true}));
   speakerChecked = macroSpeakers[index].value == "true";
   if (speakerChecked != isSpeaker) {
     $(macroSpeakers[index]).click();
@@ -252,7 +258,7 @@ numberTriggered = function()
 {
   single_digit_numbers = {"0":"zero", "1":"one", "2": "two", "3": "three", "4":"four", "5":"five", "6":"six", "7":"seven", "8":"eight", "9":"nine", 
   "zero":"0", "one":"1", "two":"2", "three":"3", "four":"4", "five":"5", "six":"6", "seven":"7", "eight":"8", "nine":"9"}; 
-  word = scope().cell.words;
+  word = scope().cell.words.trim();
   
   //Flips between words/digits for single digit numbers
   if(single_digit_numbers[word.toLowerCase()])
@@ -262,7 +268,42 @@ numberTriggered = function()
     return;
   }
   
-  //Handles adding/removing an apostrophe before two digit numbers to denote a year and decades that end in s
+  unit_abbreviations = {"in" : "inches", "ft":"feet", "mph":"miles per hour", "f":"Fahrenheit", "c":"Celsius", "m":"meters", 
+  "k": "kilometers", "km" : "kilometers", "g":"grams", "l":"liters", "lbs": "pounds", "lb":"pounds", "s":"seconds", "mm":"millimeters", 
+  "oz":"ounces", "?f":"Fahrenheit", "?c":"Celsius", "cm":"centimeters",
+  };
+  for(u in unit_abbreviations)
+  {
+    unabbreviated_word = word.toLowerCase().replace(u, "");
+    //treat as decades before seconds
+    if(!isNaN(unabbreviated_word) && unabbreviated_word % 10 == 0 && unabbreviated_word < 100 && u == "s")
+    {
+      break;
+    }
+    //convert decades to seconds next
+    if(unabbreviated_word[0] == "'" && u == "s")
+    {
+      unabbreviated_word = unabbreviated_word.substr(1);
+    }
+    if(word.length > u.length && word.toLowerCase().indexOf(u) == word.length - u.length && !isNaN(unabbreviated_word.replace(",", "")))
+    { 
+      if(nextScope() && nextScope().cell.words == "")
+      {
+        scope().cell.setWords(unabbreviated_word);
+        scope().$apply();
+        nextScope().cell.setWords(unit_abbreviations[u]);
+        nextScope().$apply();
+        return;
+      }
+      
+      scope().cell.setWords(unabbreviated_word + " " + unit_abbreviations[u]);
+      scope().$apply();
+      return;
+      
+    }
+  }
+  
+  //Removes leading apostrophe from numbers
   if(word[0] == "'" && !isNaN(word.substr(1, 2)))
   {
     scope().cell.setWords(word.substr(1));
@@ -270,14 +311,23 @@ numberTriggered = function()
     return;
   }
   
-  //console.log(word);
-  
+  //Adds comma to years/decades
   if(!isNaN(word.substr(0, 2)) && (word.length == 2 || (word.length == 3 && word[2] == "s")))
   {
     scope().cell.setWords("'" + word);
     scope().$apply();
     return;
   }
+  
+  //Removes leading ?
+  if(word[0] == "?")
+  {
+    scope().cell.setWords(word.substr(1));
+    scope().$apply();
+    return;
+  }
+  
+  
   
   //Inserts/removes commas into four digit numbers
   if(!isNaN(word))
@@ -520,6 +570,17 @@ $("body").keydown(function(e) {
   }
 });
 
+formatSong = function(e) {
+  words = scope().cell.words;
+  singer = words.split(",")[0].trim();
+  title = words.split(",").length == 1 ? "" : '"' + words.split(",")[1].trim() + '"';
+  title = title.replace('""', '"').replace('""', '"');
+  music = "[" + singer + ", " + title + "]";
+  scope().cell.setWords(music.replace(", ]", "]").toUpperCase());
+  scope().$apply();
+  e.preventDefault();
+}
+
 $("body").keydown(function(e) {
   if (e.ctrlKey && e.which == 77 && e.shiftKey) {
     formatSong(e);
@@ -702,7 +763,7 @@ formatSong = function(e) {
   singer = words.split(",")[0].trim();
   title = words.split(",").length == 1 ? "" : '"' + words.split(",")[1].trim() + '"';
   title = title.replace('""', '"').replace('""', '"');
-  music = "[MUSIC - " + singer + ", " + title + "]";
+  music = "[" + singer + ", " + title + "]";
   scope().cell.setWords(music.replace(", ]", "]").toUpperCase());
   scope().$apply();
   e.preventDefault();
@@ -766,7 +827,12 @@ parsePay = function() {
 parseName = function() {
   full_name = $(".tab-pane:eq(6) td.ng-binding:eq(3)").text();
   partial_name = full_name.split(") ").length>1 ? full_name.split(") ")[1] : full_name.split(") ")[0];
-  return partial_name;
+  return partial_name.trim();
+}
+
+parseBatch = function()
+{
+  return $(".tab-pane:eq(6) td.ng-binding:eq(9)").text().trim();
 }
 
 parseID = function() {
@@ -784,7 +850,7 @@ parseRate = function() {
 }
 
 parseProjectName = function() {
-   return $(".tab-pane:eq(6) td.ng-binding:eq(7)").text().trim();
+  return $(".tab-pane:eq(6) td.ng-binding:eq(7)").text().trim();
 }
 
 getFilesData = function() {
@@ -813,6 +879,11 @@ getSameDurationFiles = function()
   return output;
 }
 
+createFileData = function()
+{
+  
+}
+
 saveFileData = function() 
 {
   files_data = getFilesData();
@@ -821,7 +892,6 @@ saveFileData = function()
   content = transcript().tpTranscriptSaveService.emergencySaveContent();
   content_data = getContentData();
   
-  console.log("content");
   console.log(content_data[parseID()]);
   if (!file_data || !content_data[parseID()]) 
   {
@@ -831,6 +901,7 @@ saveFileData = function()
     file_data.duration = parseDuration();
     file_data.name = parseName();
     file_data.timestamp = Date.now();
+    file_data.batch = parseBatch();
     content_data[parseID()] = {};
     content_data[parseID()].original = content;
     
@@ -868,11 +939,23 @@ getSortedFileIDs = function(files_data = null, oldest_to_newest = true)
   return ids;
 }
 
-deleteFileData = function(file_id = null)
+deleteFileData = function(file_id = null, )
 {
   files_data = getFilesData();
   content_data = getContentData();
-  file_id = file_id || getSortedFileIDs()[0];
+  if(!file_id)
+  {
+    for(id of getSortedFileIDs())
+    {
+      batchesToSave = [];//["HuffPost", "Huffpost"];
+      if(batchesToSave.indexOf(getFilesData()[id].batch) == -1)
+      {
+        file_id = id;
+        break;
+      }
+    }
+  }
+  
   delete files_data[file_id];
   delete content_data[file_id];
   localStorage.setItem("files_data", JSON.stringify(files_data));
@@ -1088,8 +1171,8 @@ shiftright = function() {
     span = spans[i];
     cell = transcript().getCell($(span).attr("timestamp"));
     nextSpan = spans[i + 1];
-    nextCell = transcript().getCell($(nextSpan).attr("timestamp"));
-    nextCell.setWords(cell.words);
+    let nextCell = transcript().getCell($(nextSpan).attr("timestamp"));
+    nextCell.setWords(nextCell());
   }
   scope().$apply();
 }
@@ -1113,7 +1196,7 @@ shiftAllLeft = function()
   for(timestamp_index in timestamps)
   {
     cell = transcript().getCell(timestamps[timestamp_index]);
-    nextCell = transcript().getCell(timestamps[parseInt(timestamp_index)+1]);
+    let nextCell = transcript().getCell(timestamps[parseInt(timestamp_index)+1]);
     if(!nextCell)
     {
       continue;
@@ -1128,7 +1211,7 @@ shiftAllRight = function()
   for(timestamp_index in timestamps)
   {
     cell = transcript().getCell(timestamps[timestamp_index]);
-    nextCell = transcript().getCell(timestamps[parseInt(timestamp_index)+1]);
+    let nextCell = transcript().getCell(timestamps[parseInt(timestamp_index)+1]);
     if(!nextCell)
     {
       continue;
@@ -1201,14 +1284,14 @@ onFileLoad = function()
     previousSpeed = 8.0;
     finished = 1.0;
   }
-  else if(parseRate() < 0.5)
-  {
-    previousSpeed = 3.0;
-  }
-  else if(parseRate() < 0.65)
-  {
-    previousSpeed = 2.5;
-  }
+  // else if(parseRate() < 0.5)
+  // {
+  //   previousSpeed = 2.5;
+  // }
+  // else if(parseRate() < 0.65)
+  // {
+  //   previousSpeed = 2.0;
+  // }
   toggleSpeed();
 
   if (previousSpeed == 8.0) 
