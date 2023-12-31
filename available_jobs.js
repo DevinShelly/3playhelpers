@@ -93,7 +93,7 @@ parse_deadline = function (deadline)
     var newHours = parseInt(hours) + 12;
     deadline = deadline.split(",")[0] + ", " + newHours.toString() + ":" + minutes;
   }
-  deadline = deadline.split(",")[0] + ", 2023 " + deadline.split(", ")[1];
+  deadline = deadline.split(",")[0] + (new Date().getYear() + 1900) + deadline.split(", ")[1];
   deadline = deadline.replace("  ", " ");
   //////console.log("parsed deadline " + deadline);
   return  Date.parse(deadline);
@@ -356,7 +356,6 @@ create_autoclaim = function()
     $("#main_container").prepend(`<div class="box-content" id="autoclaim_filters" style="min-height: 0px;"></div>`);
     $("#autoclaim_filters").append(`<div class="accordion-group accordion-heading clearfix autoclaim_row autoclaim_header">
     <label>Delay (mins): <input type="text" name = "delay" value = "0" style = "width:40px;" onchange = "delay_changed()" id = "autoclaim_delay"></input></label>
-    <label>Timeout (mins): <input type="text" name = "timeout" value = "40" style = "width:40px;" onchange = "timeout_changed()" id = "autoclaim_timeout"></input></label>
     <input type="button" class ="btn" value="+" name="add_autoclaim_filter" style="margin-left:10px" onclick="create_autoclaim_row()" />
     <input type="button" class ="btn" value="Save" name="save_autoclaim" style="margin-left:10px" onclick="save_autoclaim()" />
     <input type="button" class ="btn" value="Reset" name="reset_autoclaim" style="margin-left:10px" onclick="reset_autoclaim()"/>
@@ -501,22 +500,11 @@ delay_changed = function()
     }, 1000*60);
 }
 
-timeout_changed = function()
-{
-  //////console.log(15);
-  clearTimeout(disable_autoclaim_id);
-  if(disable_autoclaim_id)
-  {
-    disable_autoclaim_id = setTimeout(disable_autoclaim, parseInt($("#autoclaim_timeout").val())*1000*60);
-  }
-}
-
 autostart = true;
 create_button = function()
 {
   if ($(".auto-refresh").length == 0)
   {
-      //////console.log("Creating buttons: " + disable_autoclaim_id);
       var autorefresh_button = "<a class = 'btn btn-icon auto-refresh'></a>";
       var autoclaim_button = "<a class = 'btn btn-icon auto-claim'></a>"
       $(".icon-refresh").parent().parent().append(autorefresh_button);
