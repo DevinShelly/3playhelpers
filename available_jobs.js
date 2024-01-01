@@ -93,9 +93,9 @@ parse_deadline = function (deadline)
     var newHours = parseInt(hours) + 12;
     deadline = deadline.split(",")[0] + ", " + newHours.toString() + ":" + minutes;
   }
-  deadline = deadline.split(",")[0] + (new Date().getYear() + 1900) + deadline.split(", ")[1];
+  deadline = deadline.split(",")[0] + ", " + (new Date().getYear() + 1900) + " " + deadline.split(", ")[1];
   deadline = deadline.replace("  ", " ");
-  //////console.log("parsed deadline " + deadline);
+  //////console.log("parsed deadline " + Date.parse(deadline));
   return  Date.parse(deadline);
 }
 
